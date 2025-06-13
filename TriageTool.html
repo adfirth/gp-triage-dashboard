@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GP Triage Scenario Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        .hidden { display: none; }
+        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; }
+        .btn-primary { background-color: #4f46e5; color: white; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 p-4 flex items-start justify-center min-h-screen">
+    <div class="w-full max-w-5xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 tracking-tight">GP Triage Simulator</h1>
+            <p class="text-lg text-gray-500 mt-2" id="session-info">Login to begin a session</p>
+        </header>
+
+        <div id="loading-view" class="card text-center p-8"><p>Loading...</p></div>
+        <div id="auth-view" class="hidden card p-8 max-w-md mx-auto"></div>
+        <div id="access-denied-view" class="hidden card p-8 text-center"></div>
+        <div id="welcome-screen" class="hidden card p-8 text-center"></div>
+        <div id="hub-view" class="hidden text-center card p-8"></div>
+        <div id="facilitator-hub-view" class="hidden text-center card p-8"></div>
+        <div id="triage-view" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <main id="scenario-container" class="card p-6 sm:p-8"></main>
+                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
+                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
+                         <div id="standard-nav" class="flex items-center space-x-3">
+                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Prev</button>
+                            <button id="random-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100">Rand</button>
+                            <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
+                         </div>
+                    </footer>
+                </div>
+                <aside id="slot-counter-view" class="card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">Slots Remaining</h3>
+                    <div id="slot-display" class="space-y-3 text-sm"><p class="text-gray-500">Joining session...</p></div>
+                </aside>
+            </div>
+             <div class="mt-8 flex items-center justify-center">
+                <button id="save-btn" class="btn btn-primary text-lg">Save Decision</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script>
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        
+        let scenarios = [];
+        let gpName = '';
+        let groupName = '';
+        let currentScenarioIndex = 0;
+        
+        const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view'];
+        const sessionInfo = document.getElementById('session-info');
+        const scenarioContainer = document.getElementById('scenario-container');
+        
+        function showView(viewId) {
+            allViews.forEach(id => document.getElementById(id).classList.add('hidden'));
+            if(viewId) document.getElementById(viewId).classList.remove('hidden');
+        }
+
+        async function loadScenariosFromDB() {
+            if (scenarios.length > 0) return;
+            try {
+                const snapshot = await db.collection('scenarios').orderBy('id').get();
+                scenarios = snapshot.docs.map(doc => doc.data());
+            } catch (error) {
+                document.getElementById('welcome-screen').innerHTML = `<p class="text-red-500">Error: Could not load scenarios.</p>`;
+                throw error;
+            }
+        }
+
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                 try {
+                    const userProfileDoc = await db.collection('users').doc(user.uid).get();
+                    if (userProfileDoc.exists) {
+                        const userProfile = userProfileDoc.data();
+                        gpName = userProfile.displayName;
+                        if (userProfile.role === 'facilitator') {
+                            showView('facilitator-hub-view');
+                            document.getElementById('facilitator-logout-btn').addEventListener('click', () => auth.signOut());
+                        } else if (userProfile.status === 'approved') {
+                            showView('welcome-screen');
+                            renderWelcomeScreen();
+                        } else {
+                            showView('access-denied-view');
+                            renderAccessDenied();
+                        }
+                    } else { throw new Error('User profile not found.'); }
+                } catch (error) {
+                    console.error("Auth Error:", error);
+                    showView('access-denied-view');
+                    document.getElementById('access-denied-view').innerHTML = `<p>An error occurred. Please contact support.</p>`;
+                }
+            } else {
+                showView('auth-view');
+                renderAuthForm();
+            }
+        });
+
+        function renderScenario(index) {
+            currentScenarioIndex = index;
+            const scenario = scenarios[index];
+            scenarioContainer.innerHTML = `
+                <div class="space-y-6">
+                    <div class="p-4 bg-indigo-50 rounded-lg"><h3 class="font-bold text-lg text-indigo-800">Patient Details</h3><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4"><p><b>Name:</b> ${scenario.name}</p><p><b>Age:</b> ${scenario.age}</p></div></div>
+                    <div><h4 class="font-semibold">Describe the problem:</h4><p class="mt-1">${scenario.problem}</p></div>
+                    <div class="border-t pt-4"><h4 class="font-semibold">Attach a photo:</h4>${ scenario.photoURL ? `<img src="${scenario.photoURL}" class="mt-2 rounded-lg border max-w-full h-auto">` : `<p class="mt-1 italic">No file attached</p>` }</div>
+                    <div><h4 class="font-semibold">How long has it been going on for? Is it getting better or worse?:</h4><p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p></div>
+                    <div><h4 class="font-semibold">Have you tried anything to help?:</h4><p class="mt-1">${scenario.selfHelp || 'Not provided'}</p></div>
+                    <div><h4 class="font-semibold">Is there anything you're particularly worried about?:</h4><p class="mt-1">${scenario.worries || 'Not provided'}</p></div>
+                    <div><h4 class="font-semibold">Expectations:</h4><p class="mt-1">${scenario.expectations || 'Not provided'}</p></div>
+                    <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div><h4 class="font-semibold">Best times to contact:</h4><p class="mt-1">${scenario.contactTimes || 'Not provided'}</p></div>
+                        <div><h4 class="font-semibold">Contact method preference:</h4><p class="mt-1">${scenario.contactMethod || 'Not provided'}</p></div>
+                        <div><h4 class="font-semibold">Preferred clinician:</h4><p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p></div>
+                    </div>
+                    <div class="mt-6 pt-6 border-t"><h2 class="text-xl font-bold">Triage Decision</h2> </div>
+                </div>`;
+        }
+        
+        async function joinSession(group) {
+            try {
+                await loadScenariosFromDB();
+                const sessionDoc = await db.collection('sessions').doc(group).get();
+                if (!sessionDoc.exists) {
+                    alert('Session not found.');
+                    return;
+                }
+                groupName = group;
+                sessionInfo.textContent = `User: ${gpName} | Group: ${groupName}`;
+                showView('triage-view');
+                renderScenario(0);
+                // Listen to slots logic would also be called here
+            } catch(e) {
+                alert('Failed to join session.');
+            }
+        }
+        
+        function renderWelcomeScreen() {
+            const container = document.getElementById('welcome-screen');
+            container.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2><p class="text-gray-600 mt-2">Welcome, ${gpName}!</p><div class="mt-6 max-w-sm mx-auto"><input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July"><button id="start-btn" class="w-full btn btn-primary mt-4">Join Session</button><button id="logout-btn-welcome" class="mt-4 text-sm text-gray-500 hover:underline">Logout</button></div>`;
+            document.getElementById('logout-btn-welcome').addEventListener('click', () => auth.signOut());
+            document.getElementById('start-btn').addEventListener('click', () => {
+                const group = document.getElementById('group-name-input').value.trim();
+                if (group) joinSession(group);
+            });
+        }
+        function renderAuthForm() { /* ... */ }
+        function renderAccessDenied() { /* ... */ }
+    </script>
+</body>
+</html>
