@@ -1,9 +1,10 @@
+// firebase-config.js
 const firebaseConfig = {
-  apiKey: "AIzaSyAzBG-4nWnF7WoKP-pCvJ_9ewL_gCK94W0",
-  authDomain: "gp-triage-dashboard.firebaseapp.com",
-  projectId: "gp-triage-dashboard",
-  storageBucket: "gp-triage-dashboard.firebasestorage.app",
-  messagingSenderId: "901162590030",
-  appId: "1:901162590030:web:05c2d51de894a0ab31c81f",
-  measurementId: "G-11NKQDGXT0"
+  apiKey: "PLACEHOLDER_API_KEY",
+  authDomain: "PLACEHOLDER_AUTH_DOMAIN",
+  projectId: "PLACEHOLDER_PROJECT_ID",
+  storageBucket: "PLACEHOLDER_STORAGE_BUCKET",
+  messagingSenderId: "PLACEHOLDER_MESSAGING_SENDER_ID",
+  appId: "PLACEHOLDER_APP_ID",
+  measurementId: "PLACEHOLDER_MEASUREMENT_ID"
 };
