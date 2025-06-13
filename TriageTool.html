@@ -10,17 +10,7 @@
         body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
         .hidden { display: none; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
-        .btn-primary { background-color: #4f46e5; color: white; }
-        .btn-primary:hover { background-color: #4338ca; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .save-btn-feedback { background-color: #16a34a !important; color: white !important; }
-        .text-red-600 { color: #dc2626; }
-        .text-amber-600 { color: #d97706; }
-        .text-green-600 { color: #16a34a; }
-        .slot-high { color: #15803d; font-weight: 500; }
-        .slot-medium { color: #d97706; font-weight: 500; }
-        .slot-low { color: #dc2626; font-weight: 600; }
+        /* Other styles */
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 p-4 flex items-start justify-center min-h-screen">
@@ -29,36 +19,7 @@
             <h1 class="text-4xl font-bold text-gray-800 tracking-tight">GP Triage Simulator</h1>
             <p class="text-lg text-gray-500 mt-2" id="session-info">Login to begin a session</p>
         </header>
-
-        <div id="loading-view" class="card text-center p-8"><p>Loading...</p></div>
-        <div id="auth-view" class="hidden card p-8 max-w-md mx-auto"></div>
-        <div id="access-denied-view" class="hidden card p-8 text-center"></div>
-        <div id="welcome-screen" class="hidden card p-8 text-center"></div>
-        <div id="hub-view" class="hidden text-center card p-8"></div>
-        <div id="facilitator-hub-view" class="hidden text-center card p-8"></div>
-        <div id="triage-view" class="hidden">
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 space-y-6">
-                    <main id="scenario-container" class="card p-6 sm:p-8"></main>
-                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
-                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
-                         <div id="standard-nav" class="flex items-center space-x-3">
-                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Prev</button>
-                            <button id="random-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100">Rand</button>
-                            <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
-                         </div>
-                    </footer>
-                </div>
-                <aside id="slot-counter-view" class="card p-6">
-                    <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">Slots Remaining</h3>
-                    <div id="slot-display" class="space-y-3 text-sm"><p class="text-gray-500">Joining session...</p></div>
-                </aside>
-            </div>
-             <div class="mt-8 flex items-center justify-center">
-                <button id="save-btn" class="btn btn-primary text-lg">Save Decision</button>
-            </div>
         </div>
-    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
