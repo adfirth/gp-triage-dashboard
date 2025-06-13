@@ -54,7 +54,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
-        // These variables will be initialized by the injected Netlify snippet
         let auth;
         let db;
         let storage;
@@ -65,7 +64,7 @@
         let sessionListener = null;
         
         const appView = document.getElementById('app-view');
-        
+
         function startApp() {
             showView('loading-view');
             auth.onAuthStateChanged(async (user) => {
@@ -102,7 +101,7 @@
                 }
             });
         }
-
+        
         async function loadScenariosFromDB() {
             try {
                 const snapshot = await db.collection('scenarios').orderBy('id').get();
@@ -152,7 +151,7 @@
             scenarios.forEach(scenario => {
                 const item = document.createElement('div');
                 item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
-                item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1">${scenario.problem || ''}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button class="btn text-sm bg-gray-200 hover:bg-gray-300">Edit</button><button class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200">Delete</button></div>`;
+                item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button class="btn text-sm bg-gray-200">Edit</button><button class="btn text-sm bg-red-100 text-red-700">Delete</button></div>`;
                 listContainer.appendChild(item);
             });
         }
@@ -166,9 +165,9 @@
         }
 
         function getScenarioFormFieldsHTML(scenario, modelAnswer) {
-            return `<div class="p-4 border rounded-lg"><h3 class="text-lg font-semibold mb-3">Basic Details</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium">Case ID (number)</label><input type="number" id="form-id" class="mt-1 p-2 w-full border rounded-md" value="${scenario.id || ''}"></div><div><label class="block text-sm font-medium">Patient Name</label><input type="text" id="form-name" class="mt-1 p-2 w-full border rounded-md" value="${scenario.name || ''}"></div><div><label class="block text-sm font-medium">Patient Age</label><input type="number" id="form-age" class="mt-1 p-2 w-full border rounded-md" value="${scenario.age || ''}"></div></div></div>
-                    <div class="p-4 border rounded-lg space-y-4"><h3 class="text-lg font-semibold">Patient Triage Information</h3><div><label class="block text-sm font-medium">Describe the problem:</label><textarea id="form-problem" rows="4" class="mt-1 p-2 w-full border rounded-md">${scenario.problem || ''}</textarea></div><div><label class="block text-sm font-medium">Attach a photo:</label><input type="file" id="form-photo" class="mt-1 w-full text-sm"></div><div><label class="block text-sm font-medium">How long has it been going on for? Is it getting better or worse?:</label><textarea id="form-durationAndProgression" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.durationAndProgression || ''}</textarea></div><div><label class="block text-sm font-medium">Have you tried anything to help?:</label><textarea id="form-selfHelp" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.selfHelp || ''}</textarea></div><div><label class="block text-sm font-medium">Is there anything you're particularly worried about?:</label><textarea id="form-worries" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.worries || ''}</textarea></div><div><label class="block text-sm font-medium">Expectations:</label><textarea id="form-expectations" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.expectations || ''}</textarea></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium">Best times to contact:</label><input type="text" id="form-contactTimes" class="mt-1 p-2 w-full border rounded-md" value="${scenario.contactTimes || ''}"></div><div><label class="block text-sm font-medium">Contact method preference:</label><input type="text" id="form-contactMethod" class="mt-1 p-2 w-full border rounded-md" value="${scenario.contactMethod || ''}"></div><div><label class="block text-sm font-medium">Preferred clinician:</label><input type="text" id="form-preferredClinician" class="mt-1 p-2 w-full border rounded-md" value="${scenario.preferredClinician || ''}"></div></div></div>
-                    <div class="p-4 border rounded-lg space-y-4 bg-indigo-50"><h3 class="text-lg font-semibold">Model Answer & Feedback</h3><div><label class="block text-sm font-medium">Urgency: Accepted Values (comma-separated)</label><input type="text" id="form-urgency-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.urgency?.accepted || []).join(', ')}" placeholder="e.g., Red, Amber"> <label class="block text-sm font-medium mt-2">Urgency: Feedback Text</label><textarea id="form-urgency-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.urgency?.feedback || ''}</textarea></div><div><label class="block text-sm font-medium">Consultation Type: Accepted Values (comma-separated)</label><input type="text" id="form-type-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.consultationType?.accepted || []).join(', ')}" placeholder="e.g., Face-to-face, Telephone"><label class="block text-sm font-medium mt-2">Consultation Type: Feedback Text</label><textarea id="form-type-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.consultationType?.feedback || ''}</textarea></div><div><label class="block text-sm font-medium">Required With: Accepted Values (comma-separated)</label><input type="text" id="form-with-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.requiredWith?.accepted || []).join(', ')}" placeholder="e.g., GP, ANP"><label class="block text-sm font-medium mt-2">Required With: Feedback Text</label><textarea id="form-with-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.requiredWith?.feedback || ''}</textarea></div></div>`;
+             return `<div class="p-4 border rounded-lg"><h3 class="text-lg font-semibold mb-3">Basic Details</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium">Case ID (number)</label><input type="number" id="form-id" class="mt-1 p-2 w-full border rounded-md" value="${scenario.id || ''}"></div><div><label class="block text-sm font-medium">Patient Name</label><input type="text" id="form-name" class="mt-1 p-2 w-full border rounded-md" value="${scenario.name || ''}"></div><div><label class="block text-sm font-medium">Patient Age</label><input type="number" id="form-age" class="mt-1 p-2 w-full border rounded-md" value="${scenario.age || ''}"></div></div></div>
+                <div class="p-4 border rounded-lg space-y-4"><h3 class="text-lg font-semibold">Patient Triage Information</h3><div><label class="block text-sm font-medium">Describe the problem:</label><textarea id="form-problem" rows="4" class="mt-1 p-2 w-full border rounded-md">${scenario.problem || ''}</textarea></div><div><label class="block text-sm font-medium">Attach a photo:</label><input type="file" id="form-photo" class="mt-1 w-full text-sm"></div><div><label class="block text-sm font-medium">How long has it been going on for? Is it getting better or worse?:</label><textarea id="form-durationAndProgression" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.durationAndProgression || ''}</textarea></div><div><label class="block text-sm font-medium">Have you tried anything to help?:</label><textarea id="form-selfHelp" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.selfHelp || ''}</textarea></div><div><label class="block text-sm font-medium">Is there anything you're particularly worried about?:</label><textarea id="form-worries" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.worries || ''}</textarea></div><div><label class="block text-sm font-medium">Expectations:</label><textarea id="form-expectations" rows="2" class="mt-1 p-2 w-full border rounded-md">${scenario.expectations || ''}</textarea></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium">Best times to contact:</label><input type="text" id="form-contactTimes" class="mt-1 p-2 w-full border rounded-md" value="${scenario.contactTimes || ''}"></div><div><label class="block text-sm font-medium">Contact method preference:</label><input type="text" id="form-contactMethod" class="mt-1 p-2 w-full border rounded-md" value="${scenario.contactMethod || ''}"></div><div><label class="block text-sm font-medium">Preferred clinician:</label><input type="text" id="form-preferredClinician" class="mt-1 p-2 w-full border rounded-md" value="${scenario.preferredClinician || ''}"></div></div></div>
+                <div class="p-4 border rounded-lg space-y-4 bg-indigo-50"><h3 class="text-lg font-semibold">Model Answer & Feedback</h3><div><label class="block text-sm font-medium">Urgency: Accepted Values (comma-separated)</label><input type="text" id="form-urgency-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.urgency?.accepted || []).join(', ')}" placeholder="e.g., Red, Amber"> <label class="block text-sm font-medium mt-2">Urgency: Feedback Text</label><textarea id="form-urgency-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.urgency?.feedback || ''}</textarea></div><div><label class="block text-sm font-medium">Consultation Type: Accepted Values (comma-separated)</label><input type="text" id="form-type-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.consultationType?.accepted || []).join(', ')}" placeholder="e.g., Face-to-face, Telephone"><label class="block text-sm font-medium mt-2">Consultation Type: Feedback Text</label><textarea id="form-type-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.consultationType?.feedback || ''}</textarea></div><div><label class="block text-sm font-medium">Required With: Accepted Values (comma-separated)</label><input type="text" id="form-with-accepted" class="mt-1 p-2 w-full border rounded-md" value="${(modelAnswer.requiredWith?.accepted || []).join(', ')}" placeholder="e.g., GP, ANP"><label class="block text-sm font-medium mt-2">Required With: Feedback Text</label><textarea id="form-with-feedback" rows="2" class="mt-1 p-2 w-full border rounded-md">${modelAnswer.requiredWith?.feedback || ''}</textarea></div></div>`;
         }
         
         async function handleSaveScenario(scenario) {
@@ -212,14 +211,14 @@
             }
         }
         
-        async function renderAdminPanel() { /* ... */ }
-        function renderAuthForm() { /* ... */ }
-        function renderAccessDenied() { /* ... */ }
-        function renderGroupSelection() { /* ... */ }
-        function renderSessionSetup(groupName) { /* ... */ }
-        function showScenarioList(groupName) { /* ... */ }
-        function showDecisionDetails(scenarioId, scenarioName) { /* ... */ }
-        async function clearGroupData(groupName) { /* ... */ }
+        async function renderAdminPanel() { appView.innerHTML = `<div>Admin Panel Here</div>`; }
+        function renderAuthForm() { appView.innerHTML = `<div class="card p-8 max-w-md mx-auto"><h2 class="text-xl font-bold text-gray-800 text-center">Facilitator Login</h2><div class="mt-6 space-y-4"><div><label for="login-email">Email</label><input type="email" id="login-email" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="login-password">Password</label><input type="password" id="login-password" class="mt-1 p-2 w-full border rounded-md"></div><p id="login-error" class="text-red-500 text-sm hidden"></p><button id="login-btn" class="w-full btn btn-primary">Login</button></div></div>`; document.getElementById('login-btn').addEventListener('click', () => { const email = document.getElementById('login-email').value; const pass = document.getElementById('login-password').value; const errorP = document.getElementById('login-error'); errorP.classList.add('hidden'); auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); }); }); }
+        function renderAccessDenied() { appView.innerHTML = `<div class="card p-8 text-center"><h2 class="text-xl font-bold text-red-600">Access Denied</h2></div>`; }
+        function renderGroupSelection() { appView.innerHTML = `<div class="text-center card p-8"><h2 class="text-2xl font-bold">Select or Create Group</h2><div class="mt-6 max-w-sm mx-auto"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md text-center" placeholder="e.g., Timperley-ST1-July"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Continue</button></div></div>`; document.getElementById('view-dashboard-btn').addEventListener('click', async () => { const groupName = document.getElementById('group-name-input').value.trim(); if (!groupName) return; currentGroupName = groupName; const sessionDoc = await db.collection('sessions').doc(groupName).get(); if(sessionDoc.exists) showScenarioList(groupName); else renderSessionSetup(groupName); }); }
+        function renderSessionSetup(groupName) { appView.innerHTML = `<div>Setup for ${groupName}</div>`; }
+        function showScenarioList(groupName) { appView.innerHTML = `<div>Scenario List for ${groupName}</div>`; }
+        function showDecisionDetails(scenarioId, scenarioName) { appView.innerHTML = `<div>Details for ${scenarioName}</div>`; }
+        async function clearGroupData(groupName) { alert('Data cleared for ' + groupName); }
     </script>
 </body>
 </html>
