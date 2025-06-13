@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Firebase Connection Test</title>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <p><b>Status:</b> <span id="status">Initializing...</span></p>
+
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+
+    <script>
+        let auth; // This will be initialized by the Netlify snippet
+
+        function startTest() {
+            const statusEl = document.getElementById('status');
+            try {
+                if (auth) {
+                    statusEl.textContent = 'Auth service is ready. Waiting for auth state...';
+                    auth.onAuthStateChanged(user => {
+                        if (user) {
+                            statusEl.textContent = 'SUCCESS: Connection established. User is logged in: ' + user.email;
+                            statusEl.style.color = 'green';
+                        } else {
+                            statusEl.textContent = 'SUCCESS: Connection established. No user is logged in.';
+                            statusEl.style.color = 'green';
+                        }
+                    });
+                } else {
+                    statusEl.textContent = 'ERROR: Auth service variable was not initialized.';
+                    statusEl.style.color = 'red';
+                }
+            } catch (e) {
+                statusEl.textContent = 'CRITICAL ERROR: ' + e.message;
+                statusEl.style.color = 'red';
+            }
+        }
+    </script>
+
+    </body>
+</html>
