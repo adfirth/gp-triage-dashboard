@@ -54,37 +54,39 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
-                // First, initialize Firebase using the config we injected into the head
-        if (window.firebaseConfig) {
-          firebase.initializeApp(window.firebaseConfig);
-        }
+              <script>
+    // First, initialize Firebase using the config we injected into the head
+    if (window.firebaseConfig) {
+      firebase.initializeApp(window.firebaseConfig);
+    }
 
-        let auth, db, storage;
-        let scenarios = [];
-        let activeView = 'sessions';
-        let auth, db, storage;
-        let scenarios = [];
-        let activeView = 'sessions';
-        let currentGroupName = '';
-        let sessionListener = null;
-        
-        const appView = document.getElementById('app-view');
+    // Declare variables ONCE, right after initialization
+    let auth, db, storage;
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkFirebase = setInterval(() => {
-                if (typeof firebase !== 'undefined' && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-                    try {
-                        clearInterval(checkFirebase);
-                        auth = firebase.auth();
-                        db = firebase.firestore();
-                        storage = firebase.storage();
-                        main();
-                    } catch (e) {
-                        console.error("Error initializing Firebase services", e);
-                    }
+    // The rest of your script
+    let scenarios = [];
+    let activeView = 'sessions';
+    let currentGroupName = '';
+    let sessionListener = null;
+
+    const appView = document.getElementById('app-view');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const checkFirebase = setInterval(() => {
+            if (typeof firebase !== 'undefined' && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+                try {
+                    // This part no longer declares the variables, it just assigns them
+                    clearInterval(checkFirebase);
+                    auth = firebase.auth();
+                    db = firebase.firestore();
+                    storage = firebase.storage();
+                    main();
+                } catch (e) {
+                    console.error("Error initializing Firebase services", e);
                 }
-            }, 50);
-        });
+            }
+        }, 50);
+    });
         
         function main() {
             showView('loading-view');
