@@ -10,7 +10,17 @@
         body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
         .hidden { display: none; }
         .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        /* Other styles */
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
+        .btn-primary { background-color: #4f46e5; color: white; }
+        .btn-primary:hover { background-color: #4338ca; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .save-btn-feedback { background-color: #16a34a !important; color: white !important; }
+        .text-red-600 { color: #dc2626; }
+        .text-amber-600 { color: #d97706; }
+        .text-green-600 { color: #16a34a; }
+        .slot-high { color: #15803d; font-weight: 500; }
+        .slot-medium { color: #d97706; font-weight: 500; }
+        .slot-low { color: #dc2626; font-weight: 600; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 p-4 flex items-start justify-center min-h-screen">
@@ -19,17 +29,44 @@
             <h1 class="text-4xl font-bold text-gray-800 tracking-tight">GP Triage Simulator</h1>
             <p class="text-lg text-gray-500 mt-2" id="session-info">Login to begin a session</p>
         </header>
+
+        <div id="loading-view" class="card text-center p-8"><p>Loading...</p></div>
+        <div id="auth-view" class="hidden card p-8 max-w-md mx-auto"></div>
+        <div id="access-denied-view" class="hidden card p-8 text-center"></div>
+        <div id="welcome-screen" class="hidden card p-8 text-center"></div>
+        <div id="hub-view" class="hidden text-center card p-8"></div>
+        <div id="facilitator-hub-view" class="hidden text-center card p-8"></div>
+        <div id="triage-view" class="hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <main id="scenario-container" class="card p-6 sm:p-8"></main>
+                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
+                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
+                         <div id="standard-nav" class="flex items-center space-x-3">
+                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Prev</button>
+                            <button id="random-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100">Rand</button>
+                            <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
+                         </div>
+                    </footer>
+                </div>
+                <aside id="slot-counter-view" class="card p-6">
+                    <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">Slots Remaining</h3>
+                    <div id="slot-display" class="space-y-3 text-sm"><p class="text-gray-500">Joining session...</p></div>
+                </aside>
+            </div>
+             <div class="mt-8 flex items-center justify-center">
+                <button id="save-btn" class="btn btn-primary text-lg">Save Decision</button>
+            </div>
         </div>
+    </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    
     <script>
-        // These variables will be initialized by the injected Netlify snippet
-        let auth;
-        let db;
-        let storage;
+        let auth, db;
         
         let scenarios = [];
         let gpName = '';
@@ -37,10 +74,23 @@
         let currentSessionInfo = {};
         let currentScenarioIndex = 0;
         let unsubscribeFromSlots;
-
-        const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view'];
         
-        function startApp() {
+        const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view'];
+
+        document.addEventListener('DOMContentLoaded', () => {
+             const checkFirebase = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.app) {
+                    try {
+                        auth = firebase.auth();
+                        db = firebase.firestore();
+                        clearInterval(checkFirebase);
+                        main();
+                    } catch (e) {}
+                }
+            }, 50);
+        });
+
+        function main() {
             showView('loading-view');
             auth.onAuthStateChanged(async (user) => {
                 if (unsubscribeFromSlots) unsubscribeFromSlots();
@@ -50,11 +100,9 @@
                         if (userProfileDoc.exists) {
                             const userProfile = userProfileDoc.data();
                             gpName = userProfile.displayName;
-
                             if (userProfile.role === 'facilitator') {
                                 showView('facilitator-hub-view');
-                                document.getElementById('facilitator-hub-view').innerHTML = `<h2 class="text-2xl font-bold">Facilitator Access</h2><p class="mt-2">Please use the Dashboard to manage sessions.</p><button id="logout-btn-facilitator" class="mt-4 text-sm underline">Logout</button>`;
-                                document.getElementById('logout-btn-facilitator').addEventListener('click', () => auth.signOut());
+                                renderFacilitatorView();
                             } else if (userProfile.status === 'approved') {
                                 showView('welcome-screen');
                                 renderWelcomeScreen();
@@ -63,20 +111,18 @@
                                 renderAccessDenied();
                             }
                         } else {
-                            // This case handles a race condition on first sign-up
-                            await db.collection('users').doc(user.uid).set({ 
+                             // This handles the race condition where a user signs up and the listener fires before the profile is created
+                             await db.collection('users').doc(user.uid).set({ 
                                 displayName: user.displayName || user.email.split('@')[0], 
                                 email: user.email, 
                                 role: 'trainee', 
                                 status: 'pending' 
                             });
-                            showView('access-denied-view');
-                            renderAccessDenied();
+                             renderAccessDenied();
                         }
                     } catch (error) {
                         console.error("Auth flow error:", error);
                         showView('access-denied-view');
-                        document.getElementById('access-denied-view').innerHTML = `<h2 class="text-xl font-bold text-red-600">Application Error</h2><p class="text-gray-600 mt-2">An error occurred while loading your profile.</p>`;
                     }
                 } else {
                     showView('auth-view');
@@ -91,7 +137,7 @@
                 const snapshot = await db.collection('scenarios').orderBy('id').get();
                 scenarios = snapshot.docs.map(doc => doc.data());
             } catch (error) {
-                document.getElementById('welcome-screen').innerHTML = `<p class="text-red-500">Error: Could not load scenarios.</p>`;
+                document.getElementById('welcome-screen').innerHTML = `<p class="text-red-500">Could not load scenarios.</p>`;
                 throw error;
             }
         }
@@ -128,10 +174,8 @@
             const loginForm = document.getElementById('login-form');
             const signupForm = document.getElementById('signup-form');
             const errorP = document.getElementById('auth-error');
-
             document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
             document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
-            
             document.getElementById('login-btn').addEventListener('click', () => {
                 const email = document.getElementById('login-email').value;
                 const pass = document.getElementById('login-password').value;
@@ -144,10 +188,9 @@
                 const pass = document.getElementById('signup-password').value;
                 errorP.classList.add('hidden');
                 if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
-
                 try {
-                    await auth.createUserWithEmailAndPassword(email, pass);
-                    // The onAuthStateChanged listener will now handle creating the database document if it doesn't exist.
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+                    await userCredential.user.updateProfile({ displayName: name });
                 } catch(err) {
                     errorP.textContent = err.message;
                     errorP.classList.remove('hidden');
@@ -158,6 +201,12 @@
             const container = document.getElementById('access-denied-view');
             container.innerHTML = `<h2 class="text-2xl font-bold text-amber-600">Account Pending Approval</h2><p class="text-gray-600 mt-4">Your account requires approval from a facilitator.</p><button id="denied-logout-btn" class="mt-6 text-sm text-gray-500 hover:underline">Logout</button>`;
             document.getElementById('denied-logout-btn').addEventListener('click', () => auth.signOut());
+        }
+
+        function renderFacilitatorView() {
+            const container = document.getElementById('facilitator-hub-view');
+            container.innerHTML = `<h2 class="text-2xl font-bold">Facilitator Access</h2><p class="mt-2">This is the trainee tool. Please use the Dashboard to manage sessions.</p><button id="logout-btn-facilitator" class="mt-4 text-sm underline">Logout</button>`;
+            document.getElementById('logout-btn-facilitator').addEventListener('click', () => auth.signOut());
         }
         
         function renderWelcomeScreen() {
@@ -305,9 +354,9 @@
                         if (currentSessionInfo.hubMode) showView('hub-view');
                     }, 1200);
                 } else {
-                    alert(`Sorry, all "${urgency} - ${type}" slots are now full. Please choose another appointment type.`);
+                    alert(`Sorry, all "${urgency} - ${type}" slots are now full.`);
                 }
-            }).catch(error => { console.error("Transaction failed: ", error); alert("Could not save decision. Please try again."); });
+            }).catch(error => { console.error("Transaction failed: ", error); alert("Could not save decision."); });
         });
 
         document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
