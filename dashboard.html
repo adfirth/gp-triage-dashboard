@@ -54,40 +54,41 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
-    
-    // First, initialize Firebase using the config we injected into the head
-    if (window.firebaseConfig) {
-      firebase.initializeApp(window.firebaseConfig);
-    }
+    // STEP 1: INITIALIZE FIREBASE (Must be the very first thing we do)
+        // This uses the configuration object that Netlify injects into the <head>
+        if (window.firebaseConfig) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
 
-    // Declare variables ONCE, right after initialization
-    let auth, db, storage;
-
-    // The rest of your script
-    let scenarios = [];
-    let activeView = 'sessions';
-    let currentGroupName = '';
-    let sessionListener = null;
-
-    const appView = document.getElementById('app-view');
-
-    document.addEventListener('DOMContentLoaded', () => {
-        const checkFirebase = setInterval(() => {
-            if (typeof firebase !== 'undefined' && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-                try {
-                    // This part no longer declares the variables, it just assigns them
-                    clearInterval(checkFirebase);
-                    auth = firebase.auth();
-                    db = firebase.firestore();
-                    storage = firebase.storage();
-                    main();
-                } catch (e) {
-                    console.error("Error initializing Firebase services", e);
-                }
-            }
-        }, 50);
-    });
+        // STEP 2: DECLARE GLOBAL VARIABLES (Only happens once)
+        let auth, db, storage;
+        let scenarios = [];
+        let activeView = 'sessions';
+        let currentGroupName = '';
+        let sessionListener = null;
         
+        const appView = document.getElementById('app-view');
+
+        // STEP 3: SET UP THE DOM EVENT LISTENER
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkFirebase = setInterval(() => {
+                if (typeof firebase !== 'undefined' && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+                    try {
+                        clearInterval(checkFirebase);
+                        // Assign the Firebase services to our variables
+                        auth = firebase.auth();
+                        db = firebase.firestore();
+                        storage = firebase.storage();
+                        // Run the main application logic
+                        main();
+                    } catch (e) {
+                        console.error("Error initializing Firebase services", e);
+                    }
+                }
+            }, 50);
+        });
+        
+        // STEP 4: ALL OF YOUR APPLICATION'S FUNCTIONS
         function main() {
             showView('loading-view');
             auth.onAuthStateChanged(async (user) => {
@@ -169,7 +170,8 @@
         }
         
         function renderAuthForm() {
-            appView.innerHTML = `<div class="card p-8 max-w-md mx-auto"><h2 class="text-xl font-bold text-gray-800 text-center">Facilitator Login</h2><div class="mt-6 space-y-4"><div><label for="login-email" class="block text-sm font-medium">Email</label><input type="email" id="login-email" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="login-password" class="block text-sm font-medium">Password</label><input type="password" id="login-password" class="mt-1 p-2 w-full border rounded-md"></div><p id="login-error" class="text-red-500 text-sm hidden"></p><button id="login-btn" class="w-full btn btn-primary">Login</button></div></div>`;
+            const authView = document.getElementById('auth-view');
+            authView.innerHTML = `<div class="card p-8 max-w-md mx-auto"><h2 class="text-xl font-bold text-gray-800 text-center">Facilitator Login</h2><div class="mt-6 space-y-4"><div><label for="login-email" class="block text-sm font-medium">Email</label><input type="email" id="login-email" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="login-password" class="block text-sm font-medium">Password</label><input type="password" id="login-password" class="mt-1 p-2 w-full border rounded-md"></div><p id="login-error" class="text-red-500 text-sm hidden"></p><button id="login-btn" class="w-full btn btn-primary">Login</button></div></div>`;
             document.getElementById('login-btn').addEventListener('click', () => {
                 const email = document.getElementById('login-email').value;
                 const pass = document.getElementById('login-password').value;
@@ -182,7 +184,8 @@
             });
         }
         function renderAccessDenied() {
-            appView.innerHTML = `<div class="card p-8 text-center max-w-md mx-auto"><h2 class="text-xl font-bold text-red-600">Access Denied</h2><p class="mt-2">You do not have permission to view this page.</p><button id="denied-logout-btn" class="mt-4 text-sm underline">Logout</button></div>`;
+            const accessDeniedView = document.getElementById('access-denied-view');
+            accessDeniedView.innerHTML = `<div class="card p-8 text-center max-w-md mx-auto"><h2 class="text-xl font-bold text-red-600">Access Denied</h2><p class="mt-2">You do not have permission to view this page.</p><button id="denied-logout-btn" class="mt-4 text-sm underline">Logout</button></div>`;
             document.getElementById('denied-logout-btn').addEventListener('click', () => auth.signOut());
         }
 
