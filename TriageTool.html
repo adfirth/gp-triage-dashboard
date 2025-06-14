@@ -303,11 +303,96 @@
             });
         }
         
-        function renderScenario(index) {
+               function renderScenario(index) {
             currentScenarioIndex = index;
             const scenario = scenarios[index];
-            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>Face-to-face</option><option>Telephone</option><option>Video</option><option>eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
-            document.getElementById('scenario-container').innerHTML = `<div class="space-y-6"><div class="p-4 bg-indigo-50 rounded-lg"><h3 class="font-bold text-lg text-indigo-800">Patient Details</h3><div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4"><p><b>Name:</b> ${scenario.name}</p><p><b>Age:</b> ${scenario.age}</p></div></div><div><h4 class="font-semibold">Describe the problem:</h4><p class="mt-1">${scenario.problem || 'Not provided'}</p></div><div class="border-t pt-4"><h4 class="font-semibold">Attach a photo:</h4>${ scenario.photoURL ? `<img src="${scenario.photoURL}" class="mt-2 rounded-lg border max-w-full h-auto">` : `<p class="mt-1 italic">No file attached</p>` }</div><div><h4 class="font-semibold">How long has it been going on for? Is it getting better or worse?:</h4><p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p></div><div><h4 class="font-semibold">Have you tried anything to help?:</h4><p class="mt-1">${scenario.selfHelp || 'Not provided'}</p></div><div><h4 class="font-semibold">Is there anything you're particularly worried about?:</h4><p class="mt-1">${scenario.worries || 'Not provided'}</p></div><div><h4 class="font-semibold">Expectations:</h4><p class="mt-1">${scenario.expectations || 'Not provided'}</p></div><div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4"><div><h4 class="font-semibold">Best times to contact:</h4><p class="mt-1">${scenario.contactTimes || 'Not provided'}</p></div><div><h4 class="font-semibold">Contact method preference:</h4><p class="mt-1">${scenario.contactMethod || 'Not provided'}</p></div><div><h4 class="font-semibold">Preferred clinician:</h4><p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p></div></div></div>` + triageOptionsHtml;
+            const scenarioContainer = document.getElementById('scenario-container');
+
+            // This is the HTML for the Triage Decision form at the bottom of the case
+            const triageOptionsHtml = `
+            <div class="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                <h2 class="text-xl font-bold text-gray-900">Triage Decision</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label>
+                        <select id="urgency" name="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500">
+                            <option class="text-red-600" value="Red">Red (same day)</option>
+                            <option class="text-amber-600" value="Amber">Amber (within 48 hours)</option>
+                            <option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label>
+                        <select id="consultation-type" name="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            <option>Face-to-face</option><option>Telephone</option><option>Video</option><option>eConsult / Message</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label>
+                        <select id="required-with" name="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                            <option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label>
+                    <div class="mt-1">
+                        <textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea>
+                    </div>
+                </div>
+            </div>`;
+            
+            // This is the HTML for the main scenario information
+            const scenarioHtml = `
+                <div class="space-y-6">
+                    <div class="p-4 bg-indigo-50 rounded-lg">
+                        <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                            <p><b>Name:</b> ${scenario.name || 'N/A'}</p>
+                            <p><b>Age:</b> ${scenario.age || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">Describe the problem:</h4>
+                        <p class="mt-1 text-gray-600">${scenario.problem || 'Not provided'}</p>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4">
+                        <h4 class="font-semibold text-gray-700">Attach a photo:</h4>
+                        ${ scenario.photoURL ? `<img src="${scenario.photoURL}" alt="Scenario Photo" class="mt-2 rounded-lg border max-w-full h-auto">` : `<p class="mt-1 text-gray-600 italic">No file attached</p>` }
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">How long has it been going on for? Is it getting better or worse?:</h4>
+                        <p class="mt-1 text-gray-600">${scenario.durationAndProgression || 'Not provided'}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">Have you tried anything to help?:</h4>
+                        <p class="mt-1 text-gray-600">${scenario.selfHelp || 'Not provided'}</p>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-gray-700">Is there anything you're particularly worried about?:</h4>
+                        <p class="mt-1 text-gray-600">${scenario.worries || 'Not provided'}</p>
+                    </div>
+                     <div>
+                        <h4 class="font-semibold text-gray-700">Expectations:</h4>
+                        <p class="mt-1 text-gray-600">${scenario.expectations || 'Not provided'}</p>
+                    </div>
+                    <div class="border-t border-gray-200 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Best times to contact:</h4>
+                            <p class="mt-1 text-gray-600">${scenario.contactTimes || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Contact method preference:</h4>
+                            <p class="mt-1 text-gray-600">${scenario.contactMethod || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-700">Preferred clinician:</h4>
+                            <p class="mt-1 text-gray-600">${scenario.preferredClinician || 'Not provided'}</p>
+                        </div>
+                    </div>
+                </div>`;
+            
+            scenarioContainer.innerHTML = scenarioHtml + triageOptionsHtml;
             updateUI();
         }
 
