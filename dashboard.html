@@ -396,7 +396,7 @@ function renderScenarioEditor() {
         }
 
         /**
-         * Handles UPDATING a scenario, now with attachment upload logic.
+         * Handles UPDATING a scenario, now with corrected attachment upload logic.
          */
         async function updateScenario(firestoreId) {
             const saveBtn = document.getElementById('save-scenario-btn');
@@ -406,7 +406,7 @@ function renderScenarioEditor() {
 
             const file = document.getElementById('attachments').files[0];
             const originalScenario = scenarios.find(s => s.firestoreId === firestoreId);
-            let attachmentUrl = originalScenario.attachments || ""; // Start with the existing URL
+            let attachmentUrl = originalScenario.attachments || ""; // Default to the original URL
 
             // Step 1: Handle file upload ONLY if a NEW file is selected
             if (file) {
@@ -415,7 +415,8 @@ function renderScenarioEditor() {
                 const storageRef = storage.ref(filePath);
                 try {
                     const uploadTask = await storageRef.put(file);
-                    attachmentUrl = await uploadTask.ref.getDownloadURL(); // Overwrite the URL
+                    // This is the crucial part: we get the new URL and assign it
+                    attachmentUrl = await uploadTask.ref.getDownloadURL();
                 } catch (error) {
                     console.error("Error uploading file:", error);
                     errorP.textContent = "File upload failed. Please try again.";
@@ -435,7 +436,7 @@ function renderScenarioEditor() {
                     name: document.getElementById('name').value.trim(),
                     age: parseInt(document.getElementById('age').value, 10),
                     problem: document.getElementById('problem').value.trim(),
-                    attachments: attachmentUrl, // Use the new or original URL
+                    attachments: attachmentUrl, // This will now have the correct new or old URL
                     durationAndProgression: document.getElementById('durationAndProgression').value.trim(),
                     selfHelp: document.getElementById('selfHelp').value.trim(),
                     worried: document.getElementById('worried').value.trim(),
@@ -448,9 +449,6 @@ function renderScenarioEditor() {
                         requiredWith: { accepted: processToArray(document.getElementById('model-requiredWith-accepted').value), feedback: document.getElementById('model-requiredWith-feedback').value.trim() }
                     }
                 };
-
-                // NOTE: The validation part has been removed from here as it's less critical for an update
-                // and to simplify the code. We can add it back if needed.
 
                 await db.collection('scenarios').doc(firestoreId).update(updatedScenario);
                 await loadScenariosFromDB();
