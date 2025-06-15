@@ -463,29 +463,70 @@ function renderScenarioEditor() {
             }
         }
 
-        /**
-         * Reads a user-selected file and logs its content to the console.
+/**
+         * Reads, parses, and "smartly" imports scenarios, avoiding ID conflicts.
          * @param {Event} event - The file input change event.
          */
-        function handleFileImport(event) {
+        async function handleFileImport(event) {
             const file = event.target.files[0];
-            if (!file) {
-                return;
-            }
+            const input = document.getElementById('import-file-input');
+            if (!file) return;
 
             const reader = new FileReader();
-            
-            reader.onload = (e) => {
+
+            reader.onload = async (e) => {
                 const fileContent = e.target.result;
-                console.log("File content read successfully:");
-                console.log(fileContent);
-                alert(`File "${file.name}" has been read. Check the console for its contents.`);
-                // In the next step, we will add code here to parse and upload this content.
+                let scenariosImportedCount = 0;
+                try {
+                    // 1. Parse the file
+                    const scenariosToImport = JSON.parse(fileContent);
+                    if (!Array.isArray(scenariosToImport) || scenariosToImport.length === 0) {
+                        alert('Import failed: The file does not contain a valid list of scenarios.');
+                        input.value = '';
+                        return;
+                    }
+
+                    // 2. Get all existing Case IDs for checking duplicates
+                    const existingIds = new Set(scenarios.map(s => s.id));
+                    let nextAvailableId = scenarios.reduce((max, s) => s.id > max ? s.id : max, 0) + 1;
+
+                    // 3. Create the batch
+                    const batch = db.batch();
+                    scenariosToImport.forEach(scenario => {
+                        // 4. Smart ID Assignment Logic
+                        if (existingIds.has(scenario.id)) {
+                            // If ID exists, assign a new, unique ID
+                            scenario.id = nextAvailableId;
+                            nextAvailableId++;
+                        }
+                        // Add the (potentially new) ID to our set to prevent duplicates within the same file
+                        existingIds.add(scenario.id); 
+                        
+                        const docRef = db.collection('scenarios').doc(); 
+                        batch.set(docRef, scenario);
+                    });
+
+                    // 5. Commit the batch
+                    await batch.commit();
+                    scenariosImportedCount = scenariosToImport.length;
+
+                    // 6. Success! Refresh the UI
+                    alert(`${scenariosImportedCount} scenarios imported successfully! Any duplicate Case IDs were automatically re-numbered.`);
+                    await loadScenariosFromDB();
+                    renderScenarioEditor();
+
+                } catch (error) {
+                    console.error("Error importing scenarios:", error);
+                    alert("Import failed. Please make sure the file is valid and check the console for errors.");
+                } finally {
+                    input.value = '';
+                }
             };
 
             reader.onerror = (e) => {
                 console.error("Error reading file:", e);
                 alert("Sorry, there was an error reading the file.");
+                input.value = '';
             };
 
             reader.readAsText(file);
