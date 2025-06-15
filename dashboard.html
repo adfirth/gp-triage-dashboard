@@ -54,7 +54,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
-    // STEP 1: INITIALIZE FIREBASE (Must be the very first thing we do)
+   // STEP 1: INITIALIZE FIREBASE (Must be the very first thing we do)
         // This uses the configuration object that Netlify injects into the <head>
         if (window.firebaseConfig) {
           firebase.initializeApp(window.firebaseConfig);
@@ -229,7 +229,7 @@
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-function renderScenarioEditor() {
+        function renderScenarioEditor() {
             appView.innerHTML = `<div class="card p-6 w-full"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2><p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p></div><button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button></div><div id="scenario-editor-list" class="mt-6 space-y-4"></div></div>`;
             document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
             const listContainer = document.getElementById('scenario-editor-list');
@@ -240,13 +240,14 @@ function renderScenarioEditor() {
             }
 
             scenarios.forEach(scenario => {
+                // Add a "guard clause" to skip any null or undefined entries in the array.
+                if (!scenario) return; 
+
                 const item = document.createElement('div');
                 item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
                 item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button data-id="${scenario.firestoreId}" class="btn text-sm bg-gray-200 hover:bg-gray-300 edit-btn">Edit</button><button data-id="${scenario.firestoreId}" data-name="Case ${scenario.id}: ${scenario.name}" class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200 delete-btn">Delete</button></div>`;
                 
-                // Add event listeners to the new buttons
                 item.querySelector('.edit-btn').addEventListener('click', (e) => {
-                    // We'll implement this next. For now, it does nothing.
                     alert('Edit functionality coming soon!');
                 });
                 item.querySelector('.delete-btn').addEventListener('click', (e) => {
@@ -258,150 +259,31 @@ function renderScenarioEditor() {
                 listContainer.appendChild(item);
             });
         }
-            scenarios.forEach(scenario => {
-                const item = document.createElement('div');
-                item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
-                item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button class="btn text-sm bg-gray-200 hover:bg-gray-300">Edit</button><button class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200">Delete</button></div>`;
-                listContainer.appendChild(item);
-            });
-        }
-
-/*******************************************************
-         * SCENARIO EDITOR FUNCTIONS (ADD/EDIT/DELETE)
-         *******************************************************/
-
-       /**
-         * Renders the comprehensive form for adding or editing a scenario.
-         * NOTE: This version does NOT handle file attachments yet.
-         */
+        
         function renderScenarioForm() {
-            // The title and button text will change if we are editing vs. adding
-            const isEditing = false; // We will use this later for the edit functionality
+            const isEditing = false;
             const title = isEditing ? "Edit Scenario" : "Add New Scenario";
             const buttonText = isEditing ? "Save Changes" : "Save Scenario";
 
-            appView.innerHTML = `
-                <div class="card p-8 max-w-3xl mx-auto">
-                    <h2 class="text-2xl font-bold text-gray-800">${title}</h2>
-                    <form id="scenario-form" class="mt-6 space-y-6">
-                        
-                        <fieldset class="space-y-4 border-t pt-6">
-                            <legend class="text-lg font-semibold text-gray-700">Case Details</legend>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <label for="id" class="block text-sm font-medium text-gray-700">Case ID (unique number)</label>
-                                    <input type="number" id="id" class="mt-1 p-2 w-full border rounded-md bg-gray-100" readonly required>
-                                </div>
-                                <div>
-                                    <label for="name" class="block text-sm font-medium text-gray-700">Patient Name</label>
-                                    <input type="text" id="name" class="mt-1 p-2 w-full border rounded-md" required>
-                                </div>
-                                <div>
-                                    <label for="age" class="block text-sm font-medium text-gray-700">Patient Age</label>
-                                    <input type="number" id="age" class="mt-1 p-2 w-full border rounded-md" required>
-                                </div>
-                            </div>
-                            <div>
-                                <label for="problem" class="block text-sm font-medium text-gray-700">Describe the problem</label>
-                                <textarea id="problem" rows="4" class="mt-1 p-2 w-full border rounded-md" required></textarea>
-                            </div>
-                            <div>
-                                <label for="durationAndProgression" class="block text-sm font-medium text-gray-700">How long has it been going on for? Is it getting better or worse?</label>
-                                <input type="text" id="durationAndProgression" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                             <div>
-                                <label for="selfHelp" class="block text-sm font-medium text-gray-700">Have you tried anything to help?</label>
-                                <input type="text" id="selfHelp" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                             <div>
-                                <label for="worried" class="block text-sm font-medium text-gray-700">Is there anything you're particularly worried about?</label>
-                                <input type="text" id="worried" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                        </fieldset>
+            appView.innerHTML = `<div class="card p-8 max-w-3xl mx-auto"><h2 class="text-2xl font-bold text-gray-800">${title}</h2><form id="scenario-form" class="mt-6 space-y-6"><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Case Details</legend><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="id" class="block text-sm font-medium text-gray-700">Case ID (unique number)</label><input type="number" id="id" class="mt-1 p-2 w-full border rounded-md bg-gray-100" readonly required></div><div><label for="name" class="block text-sm font-medium text-gray-700">Patient Name</label><input type="text" id="name" class="mt-1 p-2 w-full border rounded-md" required></div><div><label for="age" class="block text-sm font-medium text-gray-700">Patient Age</label><input type="number" id="age" class="mt-1 p-2 w-full border rounded-md" required></div></div><div><label for="problem" class="block text-sm font-medium text-gray-700">Describe the problem</label><textarea id="problem" rows="4" class="mt-1 p-2 w-full border rounded-md" required></textarea></div><div><label for="durationAndProgression" class="block text-sm font-medium text-gray-700">How long has it been going on for? Is it getting better or worse?</label><input type="text" id="durationAndProgression" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="selfHelp" class="block text-sm font-medium text-gray-700">Have you tried anything to help?</label><input type="text" id="selfHelp" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="worried" class="block text-sm font-medium text-gray-700">Is there anything you're particularly worried about?</label><input type="text" id="worried" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Contact & Expectations</legend><div><label for="expectations" class="block text-sm font-medium text-gray-700">What are your expectations for what we can do?</label><input type="text" id="expectations" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="contactMethod" class="block text-sm font-medium text-gray-700">Contact method preference (e.g., Text, Phone Call)</label><input type="text" id="contactMethod" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="preferredClinician" class="block text-sm font-medium text-gray-700">Preferred clinician to contact them</label><input type="text" id="preferredClinician" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Model Answer</legend><p class="text-sm text-gray-500">Set the correct triage outcome for this case. For accepted answers, enter values separated by a comma (e.g., Red,Amber).</p><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Urgency</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-urgency-accepted" placeholder="Accepted urgencies (comma-separated)" class="p-2 border rounded-md"><input type="text" id="model-urgency-feedback" placeholder="Feedback for urgency" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Consultation Type</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-consultationType-accepted" placeholder="Accepted types (e.g., Face-to-face)" class="p-2 border rounded-md"><input type="text" id="model-consultationType-feedback" placeholder="Feedback for consultation type" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Required With</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-requiredWith-accepted" placeholder="Accepted clinicians (e.g., GP, ANP)" class="p-2 border rounded-md"><input type="text" id="model-requiredWith-feedback" placeholder="Feedback for required with" class="p-2 border rounded-md"></div></div></fieldset><p id="scenario-error" class="text-red-500 text-sm hidden"></p><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button><button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button></div></form></div>`;
 
-                        <fieldset class="space-y-4 border-t pt-6">
-                            <legend class="text-lg font-semibold text-gray-700">Contact & Expectations</legend>
-                             <div>
-                                <label for="expectations" class="block text-sm font-medium text-gray-700">What are your expectations for what we can do?</label>
-                                <input type="text" id="expectations" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                            <div>
-                                <label for="contactMethod" class="block text-sm font-medium text-gray-700">Contact method preference (e.g., Text, Phone Call)</label>
-                                <input type="text" id="contactMethod" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                            <div>
-                                <label for="preferredClinician" class="block text-sm font-medium text-gray-700">Preferred clinician to contact them</label>
-                                <input type="text" id="preferredClinician" class="mt-1 p-2 w-full border rounded-md">
-                            </div>
-                        </fieldset>
-
-                        <fieldset class="space-y-4 border-t pt-6">
-                            <legend class="text-lg font-semibold text-gray-700">Model Answer</legend>
-                            <p class="text-sm text-gray-500">Set the correct triage outcome for this case. For accepted answers, enter values separated by a comma (e.g., Red,Amber).</p>
-                            
-                            <div class="p-4 bg-gray-50 rounded-lg">
-                                <label class="block text-sm font-medium text-gray-900">Urgency</label>
-                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="model-urgency-accepted" placeholder="Accepted urgencies (comma-separated)" class="p-2 border rounded-md">
-                                    <input type="text" id="model-urgency-feedback" placeholder="Feedback for urgency" class="p-2 border rounded-md">
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-gray-50 rounded-lg">
-                                <label class="block text-sm font-medium text-gray-900">Consultation Type</label>
-                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="model-consultationType-accepted" placeholder="Accepted types (e.g., Face-to-face)" class="p-2 border rounded-md">
-                                    <input type="text" id="model-consultationType-feedback" placeholder="Feedback for consultation type" class="p-2 border rounded-md">
-                                </div>
-                            </div>
-
-                            <div class="p-4 bg-gray-50 rounded-lg">
-                                <label class="block text-sm font-medium text-gray-900">Required With</label>
-                                <div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <input type="text" id="model-requiredWith-accepted" placeholder="Accepted clinicians (e.g., GP, ANP)" class="p-2 border rounded-md">
-                                    <input type="text" id="model-requiredWith-feedback" placeholder="Feedback for required with" class="p-2 border rounded-md">
-                                </div>
-                            </div>
-                        </fieldset>
-                        
-                        <p id="scenario-error" class="text-red-500 text-sm hidden"></p>
-                        <div class="flex justify-end gap-4 pt-4">
-                            <button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button>
-                            <button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button>
-                        </div>
-                    </form>
-                </div>
-            `;
-
-            // ** THIS IS THE CORRECTED PART **
-            // Automatically calculate and set the next Case ID.
-            // Using .reduce is safer than Math.max for handling an empty array of scenarios.
             const maxId = scenarios.reduce((max, s) => s.id > max ? s.id : max, 0);
             const nextId = maxId + 1;
             document.getElementById('id').value = nextId;
             
-            // Add event listeners for the form and its buttons
             document.getElementById('scenario-form').addEventListener('submit', saveScenario);
             document.getElementById('cancel-scenario-btn').addEventListener('click', renderScenarioEditor);
         }
-        
-        /**
-         * Handles saving a new scenario with nested modelAnswer map to the Firestore database.
-         */
+
         async function saveScenario(event) {
             event.preventDefault(); 
-
             const saveBtn = document.getElementById('save-scenario-btn');
             const errorP = document.getElementById('scenario-error');
             saveBtn.disabled = true;
             saveBtn.textContent = 'Saving...';
             errorP.classList.add('hidden');
-            
-            // Helper function to process comma-separated strings into trimmed arrays
             const processToArray = (str) => str.split(',').map(item => item.trim()).filter(item => item);
-
             try {
-                // 1. Gather all data from the form
                 const newScenario = {
                     id: parseInt(document.getElementById('id').value, 10),
                     name: document.getElementById('name').value.trim(),
@@ -413,9 +295,7 @@ function renderScenarioEditor() {
                     expectations: document.getElementById('expectations').value.trim(),
                     contactMethod: document.getElementById('contactMethod').value.trim(),
                     preferredClinician: document.getElementById('preferredClinician').value.trim(),
-                    attachments: "", // Set to empty string for now
-                    
-                    // 2. Construct the nested modelAnswer map
+                    attachments: "",
                     modelAnswer: {
                         urgency: {
                             accepted: processToArray(document.getElementById('model-urgency-accepted').value),
@@ -431,8 +311,6 @@ function renderScenarioEditor() {
                         }
                     }
                 };
-
-                // 3. Basic validation
                 if (!newScenario.id || !newScenario.name || !newScenario.age || !newScenario.problem) {
                     errorP.textContent = "Case ID, Name, Age, and Problem fields are required.";
                     errorP.classList.remove('hidden');
@@ -440,14 +318,9 @@ function renderScenarioEditor() {
                     saveBtn.textContent = 'Save Scenario';
                     return;
                 }
-
-                // 4. Save to Firebase
                 await db.collection('scenarios').add(newScenario);
-                
-                // 5. Refresh local data and return to the editor list
                 await loadScenariosFromDB();
                 renderScenarioEditor();
-
             } catch (error) {
                 console.error("Error saving scenario:", error);
                 errorP.textContent = "An error occurred while saving. Check the console for details.";
@@ -457,31 +330,20 @@ function renderScenarioEditor() {
             }
         }
 
-        /**
-         * Deletes a scenario from Firestore after user confirmation.
-         * @param {string} firestoreId - The unique document ID in Firestore.
-         * @param {string} scenarioName - The name of the scenario for the confirmation dialog.
-         */
         async function deleteScenario(firestoreId, scenarioName) {
-            // 1. Confirm with the user
             if (!confirm(`Are you sure you want to permanently delete "${scenarioName}"?`)) {
-                return; // Stop if the user clicks 'Cancel'
+                return;
             }
-
-            // 2. Delete from Firebase
             try {
                 await db.collection('scenarios').doc(firestoreId).delete();
-                
-                // 3. Refresh local data and re-render the list
                 await loadScenariosFromDB();
                 renderScenarioEditor();
-
             } catch (error) {
                 console.error("Error deleting scenario:", error);
                 alert("An error occurred while deleting the scenario. Please try again.");
             }
         }
-        
+
         function renderSessionSetup(groupName) {
             appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-4"><label class="flex items-center"><input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><span class="ml-2 text-gray-700">Enable Triage Hub Mode</span></label></div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
             const slotInputsContainer = document.getElementById('slot-inputs');
