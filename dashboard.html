@@ -229,7 +229,7 @@
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-        function renderScenarioEditor() {
+function renderScenarioEditor() {
             appView.innerHTML = `<div class="card p-6 w-full"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2><p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p></div><button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button></div><div id="scenario-editor-list" class="mt-6 space-y-4"></div></div>`;
             document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
             const listContainer = document.getElementById('scenario-editor-list');
@@ -238,6 +238,26 @@
                 listContainer.innerHTML = '<p class="text-gray-500">No scenarios found in the database.</p>';
                 return;
             }
+
+            scenarios.forEach(scenario => {
+                const item = document.createElement('div');
+                item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
+                item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button data-id="${scenario.firestoreId}" class="btn text-sm bg-gray-200 hover:bg-gray-300 edit-btn">Edit</button><button data-id="${scenario.firestoreId}" data-name="Case ${scenario.id}: ${scenario.name}" class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200 delete-btn">Delete</button></div>`;
+                
+                // Add event listeners to the new buttons
+                item.querySelector('.edit-btn').addEventListener('click', (e) => {
+                    // We'll implement this next. For now, it does nothing.
+                    alert('Edit functionality coming soon!');
+                });
+                item.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    const firestoreId = e.target.dataset.id;
+                    const scenarioName = e.target.dataset.name;
+                    deleteScenario(firestoreId, scenarioName);
+                });
+
+                listContainer.appendChild(item);
+            });
+        }
             scenarios.forEach(scenario => {
                 const item = document.createElement('div');
                 item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
@@ -436,7 +456,32 @@
                 saveBtn.textContent = 'Save Scenario';
             }
         }
-   
+
+        /**
+         * Deletes a scenario from Firestore after user confirmation.
+         * @param {string} firestoreId - The unique document ID in Firestore.
+         * @param {string} scenarioName - The name of the scenario for the confirmation dialog.
+         */
+        async function deleteScenario(firestoreId, scenarioName) {
+            // 1. Confirm with the user
+            if (!confirm(`Are you sure you want to permanently delete "${scenarioName}"?`)) {
+                return; // Stop if the user clicks 'Cancel'
+            }
+
+            // 2. Delete from Firebase
+            try {
+                await db.collection('scenarios').doc(firestoreId).delete();
+                
+                // 3. Refresh local data and re-render the list
+                await loadScenariosFromDB();
+                renderScenarioEditor();
+
+            } catch (error) {
+                console.error("Error deleting scenario:", error);
+                alert("An error occurred while deleting the scenario. Please try again.");
+            }
+        }
+        
         function renderSessionSetup(groupName) {
             appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-4"><label class="flex items-center"><input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><span class="ml-2 text-gray-700">Enable Triage Hub Mode</span></label></div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
             const slotInputsContainer = document.getElementById('slot-inputs');
