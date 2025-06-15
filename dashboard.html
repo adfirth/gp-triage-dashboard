@@ -66,6 +66,7 @@
         let activeView = 'sessions';
         let currentGroupName = '';
         let sessionListener = null;
+        let editingScenarioId = null;
         
         const appView = document.getElementById('app-view');
 
@@ -229,7 +230,8 @@
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-        function renderScenarioEditor() {
+function renderScenarioEditor() {
+            editingScenarioId = null; // Clear any previous edit state
             appView.innerHTML = `<div class="card p-6 w-full"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2><p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p></div><button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button></div><div id="scenario-editor-list" class="mt-6 space-y-4"></div></div>`;
             document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
             const listContainer = document.getElementById('scenario-editor-list');
@@ -240,16 +242,22 @@
             }
 
             scenarios.forEach(scenario => {
-                // Add a "guard clause" to skip any null or undefined entries in the array.
                 if (!scenario) return; 
 
                 const item = document.createElement('div');
                 item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
                 item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button data-id="${scenario.firestoreId}" class="btn text-sm bg-gray-200 hover:bg-gray-300 edit-btn">Edit</button><button data-id="${scenario.firestoreId}" data-name="Case ${scenario.id}: ${scenario.name}" class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200 delete-btn">Delete</button></div>`;
                 
+                // Attach the "Edit" button listener
                 item.querySelector('.edit-btn').addEventListener('click', (e) => {
-                    alert('Edit functionality coming soon!');
+                    const firestoreId = e.target.dataset.id;
+                    const scenarioToEdit = scenarios.find(s => s.firestoreId === firestoreId);
+                    if (scenarioToEdit) {
+                        renderScenarioForm(scenarioToEdit); // Pass the scenario data to the form
+                    }
                 });
+
+                // Attach the "Delete" button listener
                 item.querySelector('.delete-btn').addEventListener('click', (e) => {
                     const firestoreId = e.target.dataset.id;
                     const scenarioName = e.target.dataset.name;
@@ -260,18 +268,64 @@
             });
         }
         
-        function renderScenarioForm() {
-            const isEditing = false;
+       /**
+         * Renders the comprehensive form. Can be used for adding a NEW scenario (scenarioToEdit is null)
+         * or EDITING an existing one (scenarioToEdit is an object).
+         */
+        function renderScenarioForm(scenarioToEdit = null) {
+            const isEditing = scenarioToEdit !== null;
+            editingScenarioId = isEditing ? scenarioToEdit.firestoreId : null;
+
             const title = isEditing ? "Edit Scenario" : "Add New Scenario";
             const buttonText = isEditing ? "Save Changes" : "Save Scenario";
 
             appView.innerHTML = `<div class="card p-8 max-w-3xl mx-auto"><h2 class="text-2xl font-bold text-gray-800">${title}</h2><form id="scenario-form" class="mt-6 space-y-6"><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Case Details</legend><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="id" class="block text-sm font-medium text-gray-700">Case ID (unique number)</label><input type="number" id="id" class="mt-1 p-2 w-full border rounded-md bg-gray-100" readonly required></div><div><label for="name" class="block text-sm font-medium text-gray-700">Patient Name</label><input type="text" id="name" class="mt-1 p-2 w-full border rounded-md" required></div><div><label for="age" class="block text-sm font-medium text-gray-700">Patient Age</label><input type="number" id="age" class="mt-1 p-2 w-full border rounded-md" required></div></div><div><label for="problem" class="block text-sm font-medium text-gray-700">Describe the problem</label><textarea id="problem" rows="4" class="mt-1 p-2 w-full border rounded-md" required></textarea></div><div><label for="durationAndProgression" class="block text-sm font-medium text-gray-700">How long has it been going on for? Is it getting better or worse?</label><input type="text" id="durationAndProgression" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="selfHelp" class="block text-sm font-medium text-gray-700">Have you tried anything to help?</label><input type="text" id="selfHelp" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="worried" class="block text-sm font-medium text-gray-700">Is there anything you're particularly worried about?</label><input type="text" id="worried" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Contact & Expectations</legend><div><label for="expectations" class="block text-sm font-medium text-gray-700">What are your expectations for what we can do?</label><input type="text" id="expectations" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="contactMethod" class="block text-sm font-medium text-gray-700">Contact method preference (e.g., Text, Phone Call)</label><input type="text" id="contactMethod" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="preferredClinician" class="block text-sm font-medium text-gray-700">Preferred clinician to contact them</label><input type="text" id="preferredClinician" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Model Answer</legend><p class="text-sm text-gray-500">Set the correct triage outcome for this case. For accepted answers, enter values separated by a comma (e.g., Red,Amber).</p><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Urgency</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-urgency-accepted" placeholder="Accepted urgencies (comma-separated)" class="p-2 border rounded-md"><input type="text" id="model-urgency-feedback" placeholder="Feedback for urgency" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Consultation Type</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-consultationType-accepted" placeholder="Accepted types (e.g., Face-to-face)" class="p-2 border rounded-md"><input type="text" id="model-consultationType-feedback" placeholder="Feedback for consultation type" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Required With</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-requiredWith-accepted" placeholder="Accepted clinicians (e.g., GP, ANP)" class="p-2 border rounded-md"><input type="text" id="model-requiredWith-feedback" placeholder="Feedback for required with" class="p-2 border rounded-md"></div></div></fieldset><p id="scenario-error" class="text-red-500 text-sm hidden"></p><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button><button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button></div></form></div>`;
-
-            const maxId = scenarios.reduce((max, s) => s.id > max ? s.id : max, 0);
-            const nextId = maxId + 1;
-            document.getElementById('id').value = nextId;
             
-            document.getElementById('scenario-form').addEventListener('submit', saveScenario);
+            if (isEditing) {
+                // We are in "Edit Mode", so populate the form with existing data
+                document.getElementById('id').value = scenarioToEdit.id || '';
+                document.getElementById('name').value = scenarioToEdit.name || '';
+                document.getElementById('age').value = scenarioToEdit.age || '';
+                document.getElementById('problem').value = scenarioToEdit.problem || '';
+                document.getElementById('durationAndProgression').value = scenarioToEdit.durationAndProgression || '';
+                document.getElementById('selfHelp').value = scenarioToEdit.selfHelp || '';
+                document.getElementById('worried').value = scenarioToEdit.worried || '';
+                document.getElementById('expectations').value = scenarioToEdit.expectations || '';
+                document.getElementById('contactMethod').value = scenarioToEdit.contactMethod || '';
+                document.getElementById('preferredClinician').value = scenarioToEdit.preferredClinician || '';
+                
+                // Populate model answers, checking if they exist
+                if (scenarioToEdit.modelAnswer) {
+                    const { urgency, consultationType, requiredWith } = scenarioToEdit.modelAnswer;
+                    if (urgency) {
+                        document.getElementById('model-urgency-accepted').value = (urgency.accepted || []).join(', ');
+                        document.getElementById('model-urgency-feedback').value = urgency.feedback || '';
+                    }
+                    if (consultationType) {
+                        document.getElementById('model-consultationType-accepted').value = (consultationType.accepted || []).join(', ');
+                        document.getElementById('model-consultationType-feedback').value = consultationType.feedback || '';
+                    }
+                    if (requiredWith) {
+                        document.getElementById('model-requiredWith-accepted').value = (requiredWith.accepted || []).join(', ');
+                        document.getElementById('model-requiredWith-feedback').value = requiredWith.feedback || '';
+                    }
+                }
+            } else {
+                // We are in "Add Mode", so calculate the next available ID
+                const maxId = scenarios.reduce((max, s) => s.id > max ? s.id : max, 0);
+                const nextId = maxId + 1;
+                document.getElementById('id').value = nextId;
+            }
+            
+            document.getElementById('scenario-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                // If we are editing, call update. Otherwise, call save.
+                if (editingScenarioId) {
+                    updateScenario(editingScenarioId);
+                } else {
+                    saveScenario();
+                }
+            });
             document.getElementById('cancel-scenario-btn').addEventListener('click', renderScenarioEditor);
         }
 
@@ -341,6 +395,65 @@
             } catch (error) {
                 console.error("Error deleting scenario:", error);
                 alert("An error occurred while deleting the scenario. Please try again.");
+            }
+        }
+
+        /**
+         * Handles updating an existing scenario in the Firestore database.
+         * @param {string} firestoreId - The unique document ID to update.
+         */
+        async function updateScenario(firestoreId) {
+            const saveBtn = document.getElementById('save-scenario-btn');
+            const errorP = document.getElementById('scenario-error');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            errorP.classList.add('hidden');
+            
+            const processToArray = (str) => str.split(',').map(item => item.trim()).filter(item => item);
+
+            try {
+                // Gather all the updated data from the form
+                const updatedScenario = {
+                    id: parseInt(document.getElementById('id').value, 10),
+                    name: document.getElementById('name').value.trim(),
+                    age: parseInt(document.getElementById('age').value, 10),
+                    problem: document.getElementById('problem').value.trim(),
+                    durationAndProgression: document.getElementById('durationAndProgression').value.trim(),
+                    selfHelp: document.getElementById('selfHelp').value.trim(),
+                    worried: document.getElementById('worried').value.trim(),
+                    expectations: document.getElementById('expectations').value.trim(),
+                    contactMethod: document.getElementById('contactMethod').value.trim(),
+                    preferredClinician: document.getElementById('preferredClinician').value.trim(),
+                    modelAnswer: {
+                        urgency: {
+                            accepted: processToArray(document.getElementById('model-urgency-accepted').value),
+                            feedback: document.getElementById('model-urgency-feedback').value.trim()
+                        },
+                        consultationType: {
+                            accepted: processToArray(document.getElementById('model-consultationType-accepted').value),
+                            feedback: document.getElementById('model-consultationType-feedback').value.trim()
+                        },
+                        requiredWith: {
+                            accepted: processToArray(document.getElementById('model-requiredWith-accepted').value),
+                            feedback: document.getElementById('model-requiredWith-feedback').value.trim()
+                        }
+                    }
+                    // We don't touch the 'attachments' field yet
+                };
+
+                // Use .update() on the specific document
+                await db.collection('scenarios').doc(firestoreId).update(updatedScenario);
+
+                // Refresh local data and return to the editor list
+                await loadScenariosFromDB();
+                renderScenarioEditor();
+
+            } catch (error) {
+                console.error("Error updating scenario:", error);
+                errorP.textContent = "An error occurred while saving changes. Check console for details.";
+                errorP.classList.remove('hidden');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
             }
         }
 
