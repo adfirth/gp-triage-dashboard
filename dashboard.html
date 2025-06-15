@@ -246,6 +246,108 @@
             });
         }
 
+            /*******************************************************
+         * SCENARIO EDITOR FUNCTIONS (ADD/EDIT/DELETE)
+         *******************************************************/
+
+        /**
+         * Renders the form for adding a new scenario or editing an existing one.
+         * For now, it only handles adding new scenarios.
+         */
+        function renderScenarioForm() {
+            // The title and button text will change if we are editing vs. adding
+            const isEditing = false; // We will use this later for the edit functionality
+            const title = isEditing ? "Edit Scenario" : "Add New Scenario";
+            const buttonText = isEditing ? "Save Changes" : "Save Scenario";
+
+            appView.innerHTML = `
+                <div class="card p-8 max-w-2xl mx-auto">
+                    <h2 class="text-2xl font-bold text-gray-800">${title}</h2>
+                    <form id="scenario-form" class="mt-6 space-y-4">
+                        <div>
+                            <label for="scenario-id" class="block text-sm font-medium text-gray-700">Case ID (must be a unique number)</label>
+                            <input type="number" id="scenario-id" class="mt-1 p-2 w-full border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="scenario-name" class="block text-sm font-medium text-gray-700">Patient Name</label>
+                            <input type="text" id="scenario-name" class="mt-1 p-2 w-full border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="scenario-age" class="block text-sm font-medium text-gray-700">Patient Age</label>
+                            <input type="number" id="scenario-age" class="mt-1 p-2 w-full border rounded-md" required>
+                        </div>
+                        <div>
+                            <label for="scenario-problem" class="block text-sm font-medium text-gray-700">Clinical Problem / Details</label>
+                            <textarea id="scenario-problem" rows="6" class="mt-1 p-2 w-full border rounded-md" required></textarea>
+                        </div>
+                        <p id="scenario-error" class="text-red-500 text-sm hidden"></p>
+                        <div class="flex justify-end gap-4 pt-4">
+                            <button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button>
+                            <button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+
+            // Add event listeners for the form and its buttons
+            document.getElementById('scenario-form').addEventListener('submit', saveScenario);
+            document.getElementById('cancel-scenario-btn').addEventListener('click', renderScenarioEditor);
+        }
+
+        /**
+         * Handles saving a new scenario to the Firestore database.
+         */
+        async function saveScenario(event) {
+            event.preventDefault(); // Stop the form from reloading the page
+
+            const saveBtn = document.getElementById('save-scenario-btn');
+            const errorP = document.getElementById('scenario-error');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+            errorP.classList.add('hidden');
+            
+            // 1. Get the data from the form
+            const newScenario = {
+                id: parseInt(document.getElementById('scenario-id').value, 10),
+                name: document.getElementById('scenario-name').value.trim(),
+                age: parseInt(document.getElementById('scenario-age').value, 10),
+                problem: document.getElementById('scenario-problem').value.trim()
+            };
+
+            // 2. Basic validation
+            if (!newScenario.id || !newScenario.name || !newScenario.age || !newScenario.problem) {
+                errorP.textContent = "All fields are required.";
+                errorP.classList.remove('hidden');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Scenario';
+                return;
+            }
+            if (scenarios.some(s => s.id === newScenario.id)) {
+                 errorP.textContent = "This Case ID already exists. Please use a unique number.";
+                 errorP.classList.remove('hidden');
+                 saveBtn.disabled = false;
+                 saveBtn.textContent = 'Save Scenario';
+                 return;
+            }
+
+            // 3. Save to Firebase
+            try {
+                // We use .add() to let Firestore generate a unique document ID
+                await db.collection('scenarios').add(newScenario);
+                
+                // 4. Refresh the local data and go back to the editor view
+                await loadScenariosFromDB();
+                renderScenarioEditor();
+
+            } catch (error) {
+                console.error("Error saving scenario:", error);
+                errorP.textContent = "An error occurred while saving. Please try again.";
+                errorP.classList.remove('hidden');
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Scenario';
+            }
+        }
+   
         function renderSessionSetup(groupName) {
             appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-4"><label class="flex items-center"><input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><span class="ml-2 text-gray-700">Enable Triage Hub Mode</span></label></div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
             const slotInputsContainer = document.getElementById('slot-inputs');
