@@ -261,6 +261,20 @@
             const buttonText = isEditing ? "Save Changes" : "Save Scenario";
 
             appView.innerHTML = `
+            // --- Add this new block ---
+            // Automatically calculate and set the next Case ID
+            let nextId = 1;
+            if (scenarios && scenarios.length > 0) {
+                // Find the highest 'id' value in the existing scenarios
+                const maxId = Math.max(...scenarios.map(s => s.id));
+                nextId = maxId + 1;
+            }
+            document.getElementById('id').value = nextId;
+            // --- End of new block ---
+
+            // Add event listeners for the form and its buttons
+            document.getElementById('scenario-form').addEventListener('submit', saveScenario);
+            document.getElementById('cancel-scenario-btn').addEventListener('click', renderScenarioEditor);
                 <div class="card p-8 max-w-3xl mx-auto">
                     <h2 class="text-2xl font-bold text-gray-800">${title}</h2>
                     <form id="scenario-form" class="mt-6 space-y-6">
@@ -270,7 +284,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label for="id" class="block text-sm font-medium text-gray-700">Case ID (unique number)</label>
-                                    <input type="number" id="id" class="mt-1 p-2 w-full border rounded-md" required>
+                                    <input type="number" id="id" class="mt-1 p-2 w-full border rounded-md bg-gray-100" readonly required>
                                 </div>
                                 <div>
                                     <label for="name" class="block text-sm font-medium text-gray-700">Patient Name</label>
