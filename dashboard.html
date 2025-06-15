@@ -221,10 +221,31 @@
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-        function renderScenarioEditor() {
+function renderScenarioEditor() {
             editingScenarioId = null; 
-            appView.innerHTML = `<div class="card p-6 w-full"><div class="flex justify-between items-center mb-6"><div><h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2><p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p></div><button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button></div><div id="scenario-editor-list" class="mt-6 space-y-4"></div></div>`;
+            appView.innerHTML = `
+                <div class="card p-6 w-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2>
+                            <p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p>
+                        </div>
+                        <button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button>
+                    </div>
+                    <div id="scenario-editor-list" class="mt-6 space-y-4"></div>
+
+                    <div class="mt-8 border-t-2 border-gray-200 pt-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Bulk Import Scenarios</h3>
+                        <p class="text-sm text-gray-500 mt-1">Select a properly formatted JSON file to import multiple scenarios at once.</p>
+                        <input type="file" id="import-file-input" accept=".json" class="mt-3 block w-full max-w-xs text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer">
+                    </div>
+                </div>`;
+
             document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
+            
+            // Add event listener for our new import button
+            document.getElementById('import-file-input').addEventListener('change', handleFileImport);
+
             const listContainer = document.getElementById('scenario-editor-list');
             listContainer.innerHTML = '';
             if (!scenarios || scenarios.length === 0) {
@@ -440,6 +461,34 @@
                 console.error("Error deleting scenario:", error);
                 alert("An error occurred while deleting the scenario. Please try again.");
             }
+        }
+
+        /**
+         * Reads a user-selected file and logs its content to the console.
+         * @param {Event} event - The file input change event.
+         */
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                return;
+            }
+
+            const reader = new FileReader();
+            
+            reader.onload = (e) => {
+                const fileContent = e.target.result;
+                console.log("File content read successfully:");
+                console.log(fileContent);
+                alert(`File "${file.name}" has been read. Check the console for its contents.`);
+                // In the next step, we will add code here to parse and upload this content.
+            };
+
+            reader.onerror = (e) => {
+                console.error("Error reading file:", e);
+                alert("Sorry, there was an error reading the file.");
+            };
+
+            reader.readAsText(file);
         }
         
         function renderSessionSetup(groupName) {
