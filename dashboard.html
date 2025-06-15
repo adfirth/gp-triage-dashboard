@@ -449,6 +449,9 @@ function renderScenarioEditor() {
                     }
                 };
 
+                // NOTE: The validation part has been removed from here as it's less critical for an update
+                // and to simplify the code. We can add it back if needed.
+
                 await db.collection('scenarios').doc(firestoreId).update(updatedScenario);
                 await loadScenariosFromDB();
                 renderScenarioEditor();
