@@ -321,7 +321,7 @@ function renderScenarioEditor() {
             document.getElementById('cancel-scenario-btn').addEventListener('click', renderScenarioEditor);
         }
 
-        /**
+/**
          * Handles saving a NEW scenario, now with attachment upload logic.
          */
         async function saveScenario() {
@@ -373,13 +373,16 @@ function renderScenarioEditor() {
                         requiredWith: { accepted: processToArray(document.getElementById('model-requiredWith-accepted').value), feedback: document.getElementById('model-requiredWith-feedback').value.trim() }
                     }
                 };
-                if (!newScenario.id || !newScenario.name || !newScenario.age || !newSchema.problem) {
+
+                // ** THIS IS THE CORRECTED LINE **
+                if (!newScenario.id || !newScenario.name || !newScenario.age || !newScenario.problem) {
                     errorP.textContent = "Case ID, Name, Age, and Problem fields are required.";
                     errorP.classList.remove('hidden');
                     saveBtn.disabled = false;
                     saveBtn.textContent = 'Save Scenario';
                     return;
                 }
+                
                 await db.collection('scenarios').add(newScenario);
                 await loadScenariosFromDB();
                 renderScenarioEditor();
