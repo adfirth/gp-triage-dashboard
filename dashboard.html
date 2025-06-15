@@ -427,13 +427,6 @@
                     saveBtn.textContent = 'Save Scenario';
                     return;
                 }
-                 if (scenarios.some(s => s.id === newScenario.id)) {
-                     errorP.textContent = "This Case ID already exists. Please use a unique number.";
-                     errorP.classList.remove('hidden');
-                     saveBtn.disabled = false;
-                     saveBtn.textContent = 'Save Scenario';
-                     return;
-                }
 
                 // 4. Save to Firebase
                 await db.collection('scenarios').add(newScenario);
