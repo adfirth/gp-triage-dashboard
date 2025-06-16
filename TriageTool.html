@@ -161,6 +161,7 @@ const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 
             if (scenarios.length > 0) return;
             try {
                 const snapshot = await db.collection('scenarios').orderBy('id').get();
+                // ** THIS IS THE CORRECTED LINE **
                 scenarios = snapshot.docs.map(doc => doc.data());
             } catch (error) {
                 document.getElementById('welcome-screen').innerHTML = `<p class="text-red-500">Could not load scenarios.</p>`;
