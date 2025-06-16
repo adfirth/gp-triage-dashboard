@@ -70,7 +70,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 
     <script>
-        // STEP 1: INITIALIZE FIREBASE
+// STEP 1: INITIALIZE FIREBASE
         if (window.firebaseConfig) {
           firebase.initializeApp(window.firebaseConfig);
         }
@@ -263,7 +263,7 @@
                 
                 listenToSlots();
 
-                // Logic for attaching event listeners now that the view is ready
+                // Attach button listeners now that we know the view is ready
                 document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
 
                 if (currentSessionInfo.hubMode) {
@@ -453,7 +453,7 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        // ** THIS IS THE NEW FUNCTION THAT WAS MISSING **
+        // ** THIS IS THE NEW FUNCTION THAT HANDLES THE SAVE LOGIC **
         function handleSaveDecision() {
              const userDecision = {
                 urgency: document.getElementById('urgency').value,
@@ -496,7 +496,21 @@
             }).then(success => {
                 if (success) {
                     db.collection("decisions").add(userDecision);
-                    renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+                    // On success, show the feedback view
+                    if (userDecision.scenario.modelAnswer) {
+                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+                    } else {
+                        // If there's no model answer, just move on
+                        alert("Decision saved. This scenario has no feedback.");
+                         if (currentSessionInfo.hubMode) {
+                            showView('hub-view');
+                        } else if (currentScenarioIndex < scenarios.length - 1) {
+                            renderScenario(++currentScenarioIndex);
+                        } else {
+                            showView('welcome-screen');
+                            document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios.</p>`;
+                        }
+                    }
                 } else {
                     alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
                 }
@@ -505,6 +519,9 @@
                 alert("Could not save decision due to an error."); 
             });
         }
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
