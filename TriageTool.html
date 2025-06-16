@@ -100,7 +100,7 @@ const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 
                 }
             }, 50);
             // This is our new, more robust event listener for dynamic buttons
-            document.getElementById('app-view').addEventListener('click', (event) => {
+            document.addEventListener('click', (event) => {
                 // Check if the clicked element was the 'Continue' button on the feedback screen
                 if (event.target && event.target.id === 'continue-btn') {
                     // If in hub mode, go back to hub. Otherwise, go to next scenario if it exists.
@@ -115,7 +115,6 @@ const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 
                     }
                 }
             });
-        });
 
         // STEP 4: ALL OF YOUR ORIGINAL FUNCTIONS
         function main() {
