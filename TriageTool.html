@@ -99,6 +99,22 @@ const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 
                     }
                 }
             }, 50);
+            // This is our new, more robust event listener for dynamic buttons
+            document.getElementById('app-view').addEventListener('click', (event) => {
+                // Check if the clicked element was the 'Continue' button on the feedback screen
+                if (event.target && event.target.id === 'continue-btn') {
+                    // If in hub mode, go back to hub. Otherwise, go to next scenario if it exists.
+                    if (currentSessionInfo.hubMode) {
+                        showView('hub-view');
+                    } else if (currentScenarioIndex < scenarios.length - 1) {
+                        renderScenario(++currentScenarioIndex);
+                    } else {
+                        // This is the last scenario in standard mode
+                        showView('welcome-screen');
+                        document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios.</p>`;
+                    }
+                }
+            });
         });
 
         // STEP 4: ALL OF YOUR ORIGINAL FUNCTIONS
@@ -426,21 +442,6 @@ function renderScenario(index) {
 
             feedbackHtml += `</div><div class="mt-8 text-center"><button id="continue-btn" class="btn btn-primary">Continue</button></div>`;
             container.innerHTML = feedbackHtml;
-            
-            // Add event listener for the new continue button
-            document.getElementById('continue-btn').addEventListener('click', () => {
-                // If in hub mode, go back to hub. Otherwise, go to next scenario if it exists.
-                if (currentSessionInfo.hubMode) {
-                    showView('hub-view');
-                } else if (currentScenarioIndex < scenarios.length - 1) {
-                    renderScenario(++currentScenarioIndex);
-                } else {
-                    // This is the last scenario in standard mode
-                    showView('welcome-screen');
-                    document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios.</p>`;
-                }
-            });
-
             showView('feedback-view');
         }
         
