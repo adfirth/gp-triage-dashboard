@@ -120,9 +120,14 @@
                 }
             });
 
-            // Delegated event listener for dynamically created buttons like 'Continue'
+// Delegated event listener for dynamically created buttons like 'Continue'
             document.addEventListener('click', (event) => {
+                // --- DIAGNOSTIC --- Log any click on the page
+                console.log('Document was clicked. The element was:', event.target); 
+
                 if (event.target && event.target.id === 'continue-btn') {
+                    // --- DIAGNOSTIC --- Log a successful button match
+                    console.log('Continue button recognized! Trying to proceed...');
                     proceedToNextStep();
                 }
             });
@@ -545,15 +550,20 @@ function renderFeedbackView(userDecision, modelAnswer) {
 
         // --- MODIFICATION: NEW HELPER FUNCTION TO AVOID REPEATING CODE ---
         function proceedToNextStep() {
+            // --- DIAGNOSTIC --- Log that the function has started
+            console.log('proceedToNextStep() function has started.');
+            console.log('Current mode is:', currentSessionInfo.hubMode ? 'Hub Mode' : 'Standard Mode');
+            console.log('Current scenario index is:', currentScenarioIndex);
+
             if (currentSessionInfo.hubMode) {
-                // Return to the hub to get the next case
+                console.log('Action: returning to hub view.');
                 showView('hub-view');
                 document.getElementById('hub-status').textContent = 'Click to get the next available case.';
             } else if (currentScenarioIndex < scenarios.length - 1) {
-                // Go to the next sequential scenario
+                console.log('Action: rendering next scenario.');
                 renderScenario(++currentScenarioIndex);
             } else {
-                // Session is complete
+                console.log('Action: session complete.');
                 showView('welcome-screen');
                 document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p><button id="logout-btn-final" class="mt-4 text-sm underline">Logout</button>`;
                 document.getElementById('logout-btn-final').addEventListener('click', () => auth.signOut());
