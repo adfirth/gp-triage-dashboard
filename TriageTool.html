@@ -416,7 +416,7 @@
             updateUI();
         }
         
-        function renderFeedbackView(userDecision, modelAnswer) {
+function renderFeedbackView(userDecision, modelAnswer) {
             const container = document.getElementById('feedback-view');
             let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
 
@@ -427,9 +427,16 @@
             ];
 
             comparisons.forEach(comp => {
-                if (!comp.model) return;
-                const isCorrect = comp.model.accepted.includes(comp.user);
+                // --- MODIFICATION START ---
+                // Add robust checks to prevent errors from incomplete data
+                if (!comp.model) return; // Skip if this entire feedback category is missing
+
+                const modelAccepted = comp.model.accepted && Array.isArray(comp.model.accepted) ? comp.model.accepted : [];
+                const modelAnswerText = modelAccepted.length > 0 ? modelAccepted.join(', ') : 'Not specified';
+                const feedbackText = comp.model.feedback || 'No feedback provided.';
+                const isCorrect = modelAccepted.includes(comp.user);
                 const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
+                // --- MODIFICATION END ---
                 
                 feedbackHtml += `
                     <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
@@ -439,10 +446,10 @@
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-sm mt-2">
                             <div><span class="font-semibold">Your Answer:</span> ${comp.user}</div>
-                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ')}</div>
+                            <div><span class="font-semibold">Model Answer:</span> ${modelAnswerText}</div>
                         </div>
                         <div class="mt-3 pt-3 border-t border-gray-200">
-                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
+                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${feedbackText}</p>
                         </div>
                     </div>
                 `;
