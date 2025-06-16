@@ -155,10 +155,9 @@
                     renderAuthForm();
                 }
             });
-        } // <-- **THIS WAS THE MISSING BRACE**
+        }
 
         async function loadScenariosFromDB() {
-            // Reset scenarios array on new load to prevent duplication
             scenarios = [];
             try {
                 const snapshot = await db.collection('scenarios').orderBy('id').get();
@@ -422,7 +421,7 @@
             ];
 
             comparisons.forEach(comp => {
-                if (!comp.model) return; // Add guard clause for safety
+                if (!comp.model) return;
                 const isCorrect = comp.model.accepted.includes(comp.user);
                 const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
                 
@@ -454,6 +453,7 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
+        // ** THIS IS THE NEW FUNCTION THAT WAS MISSING **
         function handleSaveDecision() {
              const userDecision = {
                 urgency: document.getElementById('urgency').value,
