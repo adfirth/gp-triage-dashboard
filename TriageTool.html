@@ -100,18 +100,30 @@
                     }
                 }
             }, 50);
+            
+            // --- MODIFICATION ---
+            // Attach persistent event listeners once the DOM is loaded to prevent duplication
+            document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+            document.getElementById('prev-btn').addEventListener('click', () => {
+                if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+            });
+            document.getElementById('next-btn').addEventListener('click', () => {
+                if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+            });
+            document.getElementById('random-btn').addEventListener('click', () => {
+                if (scenarios.length > 1) {
+                    let newIndex;
+                    do {
+                        newIndex = Math.floor(Math.random() * scenarios.length);
+                    } while (newIndex === currentScenarioIndex);
+                    renderScenario(newIndex);
+                }
+            });
 
             // Delegated event listener for dynamically created buttons like 'Continue'
             document.addEventListener('click', (event) => {
                 if (event.target && event.target.id === 'continue-btn') {
-                    if (currentSessionInfo.hubMode) {
-                        showView('hub-view');
-                    } else if (currentScenarioIndex < scenarios.length - 1) {
-                        renderScenario(++currentScenarioIndex);
-                    } else {
-                        showView('welcome-screen');
-                        document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios.</p>`;
-                    }
+                    proceedToNextStep();
                 }
             });
         });
@@ -263,9 +275,6 @@
                 
                 listenToSlots();
 
-                // Attach button listeners now that we know the view is ready
-                document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
-
                 if (currentSessionInfo.hubMode) {
                     showView('hub-view');
                     document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
@@ -273,9 +282,6 @@
                 } else {
                     showView('triage-view');
                     document.getElementById('standard-nav').classList.remove('hidden');
-                    document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
-                    document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
-                    document.getElementById('random-btn').addEventListener('click', () => { let newIndex; do { newIndex = Math.floor(Math.random() * scenarios.length); } while (newIndex === currentScenarioIndex && scenarios.length > 1); renderScenario(newIndex); });
                     renderScenario(0);
                 }
             } catch (error) {
@@ -453,9 +459,13 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        // ** THIS IS THE NEW FUNCTION THAT HANDLES THE SAVE LOGIC **
-        function handleSaveDecision() {
-             const userDecision = {
+        // --- MODIFICATION: REVISED AND ROBUST SAVE FUNCTION ---
+        async function handleSaveDecision() {
+            const saveButton = document.getElementById('save-btn');
+            saveButton.disabled = true; // Prevent double clicks
+            saveButton.textContent = 'Saving...';
+
+            const userDecision = {
                 urgency: document.getElementById('urgency').value,
                 consultationType: document.getElementById('consultation-type').value,
                 requiredWith: document.getElementById('required-with').value,
@@ -469,59 +479,79 @@
             const slotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
 
-            db.runTransaction(transaction => {
-                return transaction.get(sessionRef).then(doc => {
-                    if (!doc.exists) throw "Session document does not exist!";
+            try {
+                const success = await db.runTransaction(async (transaction) => {
+                    const doc = await transaction.get(sessionRef);
+                    if (!doc.exists) {
+                        throw "Session document does not exist!";
+                    }
+
                     const sessionData = doc.data();
                     const currentSlots = sessionData.slots;
-                    
-                    if (currentSessionInfo.hubMode || (currentSlots[slotKey] && currentSlots[slotKey] > 0)) {
-                        const newSlots = { ...currentSlots };
+
+                    // Check if there's a slot available (unless in hub mode)
+                    if (currentSessionInfo.hubMode || (currentSlots[slotKey] !== undefined && currentSlots[slotKey] > 0)) {
+                        const updates = {};
+
+                        // Decrement slot count if not in hub mode
                         if (!currentSessionInfo.hubMode) {
-                            newSlots[slotKey] = currentSlots[slotKey] - 1;
+                            updates[`slots.${slotKey}`] = firebase.firestore.FieldValue.increment(-1);
                         }
 
-                        const newStatus = { ...sessionData.scenarioStatus };
+                        // Update scenario status if in hub mode
                         if (currentSessionInfo.hubMode) {
                             const scenarioId = userDecision.scenario.id;
-                            newStatus[scenarioId] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+                            updates[`scenarioStatus.${scenarioId}`] = {
+                                status: 'completed',
+                                completedBy: gpName,
+                                completedAt: userDecision.timestamp
+                            };
                         }
-                        
-                        transaction.update(sessionRef, { slots: newSlots, scenarioStatus: newStatus });
-                        return true;
+
+                        transaction.update(sessionRef, updates);
+                        return true; // Transaction will commit and return true
                     } else {
-                        return false; 
+                        return false; // Transaction will abort and return false
                     }
                 });
-            }).then(success => {
+
                 if (success) {
-                    db.collection("decisions").add(userDecision);
-                    // On success, show the feedback view
+                    await db.collection("decisions").add(userDecision);
+
                     if (userDecision.scenario.modelAnswer) {
                         renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
                     } else {
-                        // If there's no model answer, just move on
                         alert("Decision saved. This scenario has no feedback.");
-                         if (currentSessionInfo.hubMode) {
-                            showView('hub-view');
-                        } else if (currentScenarioIndex < scenarios.length - 1) {
-                            renderScenario(++currentScenarioIndex);
-                        } else {
-                            showView('welcome-screen');
-                            document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios.</p>`;
-                        }
+                        proceedToNextStep();
                     }
                 } else {
                     alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
                 }
-            }).catch(error => { 
-                console.error("Transaction failed: ", error); 
-                alert("Could not save decision due to an error."); 
-            });
+            } catch (error) {
+                console.error("Transaction failed: ", error);
+                alert("Could not save decision due to a server error.");
+            } finally {
+                saveButton.disabled = false; // Re-enable button
+                saveButton.textContent = 'Save Decision';
+            }
         }
-    </script>
-</body>
-</html>
+
+        // --- MODIFICATION: NEW HELPER FUNCTION TO AVOID REPEATING CODE ---
+        function proceedToNextStep() {
+            if (currentSessionInfo.hubMode) {
+                // Return to the hub to get the next case
+                showView('hub-view');
+                document.getElementById('hub-status').textContent = 'Click to get the next available case.';
+            } else if (currentScenarioIndex < scenarios.length - 1) {
+                // Go to the next sequential scenario
+                renderScenario(++currentScenarioIndex);
+            } else {
+                // Session is complete
+                showView('welcome-screen');
+                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p><button id="logout-btn-final" class="mt-4 text-sm underline">Logout</button>`;
+                document.getElementById('logout-btn-final').addEventListener('click', () => auth.signOut());
+            }
+        }
     </script>
 </body>
 </html>
