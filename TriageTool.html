@@ -465,8 +465,12 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        function handleSaveDecision() {
-             const userDecision = {
+       async function handleSaveDecision() {
+            const saveButton = document.getElementById('save-btn');
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+
+            const userDecision = {
                 urgency: document.getElementById('urgency').value,
                 consultationType: document.getElementById('consultation-type').value,
                 requiredWith: document.getElementById('required-with').value,
@@ -477,36 +481,69 @@
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
 
-            const slotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
+            const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
 
-            db.runTransaction(transaction => {
-                return transaction.get(sessionRef).then(doc => {
-                    if (!doc.exists) throw "Session document does not exist!";
-                    const sessionData = doc.data();
-                    const currentSlots = sessionData.slots;
-                    
-                    if (currentSessionInfo.hubMode || (currentSlots[slotKey] !== undefined && currentSlots[slotKey] > 0)) {
-                        const newSlots = { ...currentSlots };
-                        if (!currentSessionInfo.hubMode) {
-                            newSlots[slotKey] = currentSlots[slotKey] - 1;
-                        }
+            try {
+                // Check if a decision for this user/scenario/group already exists
+                const querySnapshot = await db.collection("decisions")
+                    .where("groupName", "==", groupName)
+                    .where("gpName", "==", gpName)
+                    .where("scenario.id", "==", userDecision.scenario.id)
+                    .limit(1)
+                    .get();
 
-                        const newStatus = { ...sessionData.scenarioStatus };
-                        if (currentSessionInfo.hubMode) {
-                            const scenarioId = userDecision.scenario.id;
-                            newStatus[scenarioId] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+                const existingDecisionDoc = querySnapshot.docs[0];
+
+                const success = await db.runTransaction(async (transaction) => {
+                    const sessionDoc = await transaction.get(sessionRef);
+                    if (!sessionDoc.exists) throw "Session document does not exist!";
+                    
+                    const sessionData = sessionDoc.data();
+                    const currentSlots = sessionData.slots;
+                    const updates = {};
+
+                    // If an old decision exists, we need to refund the slot
+                    if (existingDecisionDoc) {
+                        const oldDecisionData = existingDecisionDoc.data();
+                        const oldSlotKey = `${oldDecisionData.urgency}|${oldDecisionData.consultationType}`;
+                        // Only refund the slot if it's different from the new one
+                        if (oldSlotKey !== newSlotKey) {
+                           updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
+                        }
+                    }
+
+                    // Now, check if a new slot is available (unless in hub mode)
+                    if (currentSessionInfo.hubMode || (currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0)) {
+                        if (!currentSessionInfo.hubMode) {
+                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
                         }
                         
-                        transaction.update(sessionRef, { slots: newSlots, scenarioStatus: newStatus });
+                        if (currentSessionInfo.hubMode) {
+                            const scenarioId = userDecision.scenario.id;
+                            updates[`scenarioStatus.${scenarioId}`] = {
+                                status: 'completed',
+                                completedBy: gpName,
+                                completedAt: userDecision.timestamp
+                            };
+                        }
+                        
+                        transaction.update(sessionRef, updates);
                         return true;
                     } else {
-                        return false; 
+                        return false; // Not enough slots for the new decision
                     }
                 });
-            }).then(success => {
+
                 if (success) {
-                    db.collection("decisions").add(userDecision);
+                    // If a decision already existed, update it. Otherwise, create a new one.
+                    if (existingDecisionDoc) {
+                        await db.collection("decisions").doc(existingDecisionDoc.id).update(userDecision);
+                    } else {
+                        await db.collection("decisions").add(userDecision);
+                    }
+                    
+                    // Proceed to feedback
                     if (userDecision.scenario.modelAnswer) {
                         renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
                     } else {
@@ -516,21 +553,12 @@
                 } else {
                     alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
                 }
-            }).catch(error => { 
-                console.error("Transaction failed: ", error); 
-                alert("Could not save decision due to an error."); 
-            });
-        }
-        
-        function proceedToNextStep() {
-            if (currentSessionInfo.hubMode) {
-                showView('hub-view');
-            } else if (currentScenarioIndex < scenarios.length - 1) {
-                showView('triage-view');
-                renderScenario(++currentScenarioIndex);
-            } else {
-                showView('welcome-screen');
-                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
+            } catch (error) {
+                console.error("Save/Update decision failed: ", error);
+                alert("Could not save decision due to a server error.");
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Decision';
             }
         }
     </script>
