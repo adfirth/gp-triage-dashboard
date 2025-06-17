@@ -360,7 +360,8 @@
                 return;
             }
 
-            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="F2F">Face-to-face</option><option value="Tel">Telephone</option><option value="Vid">Video</option><option value="eConsult">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="GP">GP</option><option value="ANP">ANP</option><option value="PN">Practice Nurse</option><option value="HCA">HCA</option><option value="Pharmacist">Pharmacist</option><option value="FCP">FCP</option><option value="Admin">Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+            // ** MODIFICATION IS HERE **
+            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult / Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
             
             const scenarioDetailsHtml = `
                 <div class="space-y-6">
@@ -472,9 +473,9 @@ function renderFeedbackView(userDecision, modelAnswer) {
         }
 
         // --- MODIFICATION: REVISED AND ROBUST SAVE FUNCTION ---
-        async function handleSaveDecision() {
+async function handleSaveDecision() {
             const saveButton = document.getElementById('save-btn');
-            saveButton.disabled = true; // Prevent double clicks
+            saveButton.disabled = true;
             saveButton.textContent = 'Saving...';
 
             const userDecision = {
@@ -491,6 +492,9 @@ function renderFeedbackView(userDecision, modelAnswer) {
             const slotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
 
+            // --- DIAGNOSTIC LOGS ---
+            console.log("Checking for available slot with key:", slotKey);
+            
             try {
                 const success = await db.runTransaction(async (transaction) => {
                     const doc = await transaction.get(sessionRef);
@@ -500,17 +504,14 @@ function renderFeedbackView(userDecision, modelAnswer) {
 
                     const sessionData = doc.data();
                     const currentSlots = sessionData.slots;
+                    
+                    console.log("Available slots from database:", currentSlots);
 
-                    // Check if there's a slot available (unless in hub mode)
                     if (currentSessionInfo.hubMode || (currentSlots[slotKey] !== undefined && currentSlots[slotKey] > 0)) {
                         const updates = {};
-
-                        // Decrement slot count if not in hub mode
                         if (!currentSessionInfo.hubMode) {
                             updates[`slots.${slotKey}`] = firebase.firestore.FieldValue.increment(-1);
                         }
-
-                        // Update scenario status if in hub mode
                         if (currentSessionInfo.hubMode) {
                             const scenarioId = userDecision.scenario.id;
                             updates[`scenarioStatus.${scenarioId}`] = {
@@ -519,17 +520,15 @@ function renderFeedbackView(userDecision, modelAnswer) {
                                 completedAt: userDecision.timestamp
                             };
                         }
-
                         transaction.update(sessionRef, updates);
-                        return true; // Transaction will commit and return true
+                        return true; 
                     } else {
-                        return false; // Transaction will abort and return false
+                        return false;
                     }
                 });
 
                 if (success) {
                     await db.collection("decisions").add(userDecision);
-
                     if (userDecision.scenario.modelAnswer) {
                         renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
                     } else {
@@ -543,7 +542,8 @@ function renderFeedbackView(userDecision, modelAnswer) {
                 console.error("Transaction failed: ", error);
                 alert("Could not save decision due to a server error.");
             } finally {
-                saveButton.disabled = false; // Re-enable button
+                // Re-enable the button regardless of outcome
+                saveButton.disabled = false;
                 saveButton.textContent = 'Save Decision';
             }
         }
