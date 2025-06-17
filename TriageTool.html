@@ -465,17 +465,21 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-       async function handleSaveDecision() {
+async function handleSaveDecision() {
             const saveButton = document.getElementById('save-btn');
             saveButton.disabled = true;
             saveButton.textContent = 'Saving...';
 
+            const currentScenario = scenarios[currentScenarioIndex];
+
+            // Create the decision object
             const userDecision = {
                 urgency: document.getElementById('urgency').value,
                 consultationType: document.getElementById('consultation-type').value,
                 requiredWith: document.getElementById('required-with').value,
                 triageNotes: document.getElementById('triage-notes').value.trim(),
-                scenario: scenarios[currentScenarioIndex],
+                scenario: currentScenario, // Keep the full scenario for record-keeping
+                scenarioId: currentScenario.id, // ** NEW: Add a simple ID for reliable querying **
                 gpName: gpName,
                 groupName: groupName,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -485,43 +489,37 @@
             const sessionRef = db.collection('sessions').doc(groupName);
 
             try {
-                // Check if a decision for this user/scenario/group already exists
+                // ** THE FIX IS HERE: Query on the new, simple 'scenarioId' field **
                 const querySnapshot = await db.collection("decisions")
                     .where("groupName", "==", groupName)
                     .where("gpName", "==", gpName)
-                    .where("scenario.id", "==", userDecision.scenario.id)
+                    .where("scenarioId", "==", currentScenario.id) // Use the simple ID
                     .limit(1)
                     .get();
 
                 const existingDecisionDoc = querySnapshot.docs[0];
+                const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
 
                 const success = await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
                     if (!sessionDoc.exists) throw "Session document does not exist!";
                     
-                    const sessionData = sessionDoc.data();
+                    const sessionData = doc.data();
                     const currentSlots = sessionData.slots;
                     const updates = {};
+                    
+                    const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
+                    const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-                    // If an old decision exists, we need to refund the slot
-                    if (existingDecisionDoc) {
-                        const oldDecisionData = existingDecisionDoc.data();
-                        const oldSlotKey = `${oldDecisionData.urgency}|${oldDecisionData.consultationType}`;
-                        // Only refund the slot if it's different from the new one
-                        if (oldSlotKey !== newSlotKey) {
+                    if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
+                        if (isSwapping) {
                            updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                         }
-                    }
-
-                    // Now, check if a new slot is available (unless in hub mode)
-                    if (currentSessionInfo.hubMode || (currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0)) {
                         if (!currentSessionInfo.hubMode) {
                             updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
                         }
-                        
                         if (currentSessionInfo.hubMode) {
-                            const scenarioId = userDecision.scenario.id;
-                            updates[`scenarioStatus.${scenarioId}`] = {
+                            updates[`scenarioStatus.${userDecision.scenarioId}`] = {
                                 status: 'completed',
                                 completedBy: gpName,
                                 completedAt: userDecision.timestamp
@@ -531,19 +529,17 @@
                         transaction.update(sessionRef, updates);
                         return true;
                     } else {
-                        return false; // Not enough slots for the new decision
+                        return false; 
                     }
                 });
 
                 if (success) {
-                    // If a decision already existed, update it. Otherwise, create a new one.
                     if (existingDecisionDoc) {
                         await db.collection("decisions").doc(existingDecisionDoc.id).update(userDecision);
                     } else {
                         await db.collection("decisions").add(userDecision);
                     }
                     
-                    // Proceed to feedback
                     if (userDecision.scenario.modelAnswer) {
                         renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
                     } else {
