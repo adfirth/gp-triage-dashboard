@@ -256,13 +256,13 @@
             document.getElementById('logout-btn-facilitator').addEventListener('click', () => auth.signOut());
         }
         
-        function renderWelcomeScreen() {
+       function renderWelcomeScreen() {
             const container = document.getElementById('welcome-screen');
             container.innerHTML = `
                 <h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2>
                 <div class="mt-8 max-w-sm mx-auto space-y-4">
                     <div>
-                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name for this Session</label>
+                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name</label>
                         <input type="text" id="user-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" value="${gpName}">
                     </div>
                     <div>
@@ -284,7 +284,7 @@
                     return;
                 }
                 if (!sessionGpName) {
-                    alert('Please enter a name for this session.');
+                    alert('Please enter your name.');
                     return;
                 }
                 
@@ -294,7 +294,7 @@
                 joinSession(group);
             });
         }
-
+        
         async function joinSession(group) {
             try {
                 await loadScenariosFromDB();
