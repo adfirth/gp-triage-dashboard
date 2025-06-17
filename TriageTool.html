@@ -340,7 +340,7 @@
                     if(urgencySlots.length > 0) {
                         slotDisplay.innerHTML += `<div class="pt-2"><h4 class="font-bold text-gray-700">${urgency}</h4></div>`;
                         urgencySlots.forEach(key => {
-                            const type = key.split('|')[1];
+                            const type = key.split('|')[1].replace(/-/g, ' '); // Display original text
                             const count = slots[key];
                             let colorClass = 'slot-high';
                             if (count <= 2) colorClass = 'slot-low';
@@ -360,7 +360,7 @@
                 return;
             }
 
-            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult / Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult - Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
             
             const scenarioDetailsHtml = `
                 <div class="space-y-6">
@@ -443,8 +443,8 @@
                            ${resultIcon}
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-sm mt-2">
-                            <div><span class="font-semibold">Your Answer:</span> ${comp.user}</div>
-                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ')}</div>
+                            <div><span class="font-semibold">Your Answer:</span> ${comp.user.replace(/-/g, ' ')}</div>
+                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ').replace(/-/g, ' ')}</div>
                         </div>
                         <div class="mt-3 pt-3 border-t border-gray-200">
                             <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
@@ -464,7 +464,7 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        function handleSaveDecision() {
+        async function handleSaveDecision() {
             const saveButton = document.getElementById('save-btn');
             const currentScenario = scenarios[currentScenarioIndex];
             if (!currentScenario) {
@@ -490,7 +490,7 @@
             const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
 
-            db.runTransaction(async (transaction) => {
+            try {
                 const querySnapshot = await db.collection("decisions")
                     .where("groupName", "==", groupName)
                     .where("gpName", "==", gpName)
@@ -501,59 +501,64 @@
                 const existingDecisionDoc = querySnapshot.docs[0];
                 const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
                 
-                const sessionDoc = await transaction.get(sessionRef);
-                if (!sessionDoc.exists) throw "Session document does not exist!";
-                
-                const sessionData = sessionDoc.data();
-                const currentSlots = sessionData.slots;
-                const updates = {};
-                
-                const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
-                const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-
-                if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
-                    if (isSwapping) {
-                        updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
-                    }
-                    if (!currentSessionInfo.hubMode) {
-                        updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                    }
-                    if (currentSessionInfo.hubMode) {
-                        updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
-                    }
+                const success = await db.runTransaction(async (transaction) => {
+                    const sessionDoc = await transaction.get(sessionRef);
+                    if (!sessionDoc.exists) throw "Session document does not exist!";
                     
-                    transaction.update(sessionRef, updates);
+                    const sessionData = sessionDoc.data();
+                    const currentSlots = sessionData.slots;
+                    const updates = {};
+                    
+                    const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
+                    const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-                    if (existingDecisionDoc) {
-                        transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+                    if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
+                        if (isSwapping) {
+                           updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
+                        }
+                        if (!currentSessionInfo.hubMode) {
+                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+                        }
+                        if (currentSessionInfo.hubMode) {
+                            updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+                        }
+                        
+                        if (Object.keys(updates).length > 0) {
+                            transaction.update(sessionRef, updates);
+                        }
+
+                        if (existingDecisionDoc) {
+                            transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+                        } else {
+                            const newDecisionRef = db.collection("decisions").doc();
+                            transaction.set(newDecisionRef, userDecision);
+                        }
+                        return true;
+
                     } else {
-                        const newDecisionRef = db.collection("decisions").doc();
-                        transaction.set(newDecisionRef, userDecision);
+                        return false; 
+                    }
+                });
+
+                if (success) {
+                    if (userDecision.scenario.modelAnswer) {
+                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+                    } else {
+                        alert("Decision saved. This scenario has no feedback.");
+                        proceedToNextStep();
                     }
                 } else {
-                    throw "slots-full"; 
+                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
                 }
-            }).then(() => {
-                if (userDecision.scenario.modelAnswer) {
-                    renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-                } else {
-                    alert("Decision saved. This scenario has no feedback.");
-                    proceedToNextStep();
-                }
-            }).catch(error => { 
-                if (error === "slots-full") {
-                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
-                } else {
-                    console.error("Transaction failed: ", error); 
-                    alert("Could not save decision due to a server error."); 
-                }
-            }).finally(() => {
+            } catch (error) {
+                console.error("Save/Update decision failed: ", error);
+                alert("Could not save decision due to a server error.");
+            } finally {
                 saveButton.disabled = false;
                 saveButton.textContent = 'Save Decision';
-            });
+            }
         }
         
-        // ** THIS IS THE MISSING FUNCTION **
         function proceedToNextStep() {
             if (currentSessionInfo.hubMode) {
                 showView('hub-view');
