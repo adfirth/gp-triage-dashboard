@@ -492,25 +492,33 @@
             reader.readAsText(file);
         }
         
-        function renderSessionSetup(groupName) {
+       function renderSessionSetup(groupName) {
             appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-4"><label class="flex items-center"><input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><span class="ml-2 text-gray-700">Enable Triage Hub Mode</span></label></div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
             const slotInputsContainer = document.getElementById('slot-inputs');
             const urgencies = ['Red', 'Amber', 'Green'];
-            const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult - Message']; // Safe string
+            const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult / Message'];
+            
             urgencies.forEach(urgency => types.forEach(type => {
-                const safeType = type.replace(/\s/g, '-').replace('/', '-'); // Make id-safe
-                const id = `slot-${urgency}-${safeType}`;
+                const safeTypeId = type.replace(/\s|\//g, '-');
+                const id = `slot-${urgency}-${safeTypeId}`;
                 const defaultVal = (urgency === 'Green') ? 10 : (urgency === 'Amber' ? 5 : 2);
                 slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
             }));
+
             document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupSelection);
+            
             document.getElementById('start-session-btn').addEventListener('click', async () => {
                 const hubMode = document.getElementById('hub-mode-checkbox').checked;
                 const slots = {};
                 urgencies.forEach(urgency => types.forEach(type => {
-                    const safeTypeForId = type.replace(/\s/g, '-').replace('/', '-');
-                    const inputId = `slot-${urgency}-${safeTypeForId}`;
-                    const key = `${urgency}|${type}`; // The key uses the safe string
+                    const safeTypeId = type.replace(/\s|\//g, '-');
+                    const inputId = `slot-${urgency}-${safeTypeId}`;
+                    
+                    // ** THIS IS THE CRITICAL FIX **
+                    // Create the database key using the safe hyphenated version
+                    const safeKeyType = type.replace(' / ', ' - '); 
+                    const key = `${urgency}|${safeKeyType}`;
+                    
                     slots[key] = parseInt(document.getElementById(inputId).value, 10) || 0;
                 }));
                 const scenarioStatus = {};
