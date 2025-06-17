@@ -276,7 +276,6 @@
                 
                 listenToSlots();
 
-                // Attach button listeners now that we know the triage view is ready
                 document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
                 document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
                 document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
@@ -465,19 +464,17 @@
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-async function handleSaveDecision() {
+        function handleSaveDecision() {
             const saveButton = document.getElementById('save-btn');
-            saveButton.disabled = true;
-            saveButton.textContent = 'Saving...';
-
             const currentScenario = scenarios[currentScenarioIndex];
             if (!currentScenario) {
-                alert("Error: Cannot find current scenario data. Please refresh and try again.");
-                saveButton.disabled = false;
-                saveButton.textContent = 'Save Decision';
+                alert("Error: Cannot find current scenario data. Please try again.");
                 return;
             }
 
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+            
             const userDecision = {
                 urgency: document.getElementById('urgency').value,
                 consultationType: document.getElementById('consultation-type').value,
@@ -493,7 +490,7 @@ async function handleSaveDecision() {
             const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
 
-            try {
+            db.runTransaction(async (transaction) => {
                 const querySnapshot = await db.collection("decisions")
                     .where("groupName", "==", groupName)
                     .where("gpName", "==", gpName)
@@ -503,63 +500,70 @@ async function handleSaveDecision() {
 
                 const existingDecisionDoc = querySnapshot.docs[0];
                 const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+                
+                const sessionDoc = await transaction.get(sessionRef);
+                if (!sessionDoc.exists) throw "Session document does not exist!";
+                
+                const sessionData = sessionDoc.data();
+                const currentSlots = sessionData.slots;
+                const updates = {};
+                
+                const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
+                const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-                const success = await db.runTransaction(async (transaction) => {
-                    const sessionDoc = await transaction.get(sessionRef); // Fetched as 'sessionDoc'
-                    if (!sessionDoc.exists) throw "Session document does not exist!";
-                    
-                    // ** THIS IS THE CORRECTED LINE **
-                    const sessionData = sessionDoc.data(); // Must use 'sessionDoc' here
-                    const currentSlots = sessionData.slots;
-                    const updates = {};
-                    
-                    const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
-                    const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-
-                    if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
-                        if (isSwapping) {
-                           updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
-                        }
-                        if (!currentSessionInfo.hubMode) {
-                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                        }
-                        if (currentSessionInfo.hubMode) {
-                            updates[`scenarioStatus.${userDecision.scenarioId}`] = {
-                                status: 'completed',
-                                completedBy: gpName,
-                                completedAt: userDecision.timestamp
-                            };
-                        }
-                        
-                        transaction.update(sessionRef, updates);
-                        return true;
-                    } else {
-                        return false; 
+                if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
+                    if (isSwapping) {
+                        updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                     }
-                });
+                    if (!currentSessionInfo.hubMode) {
+                        updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+                    }
+                    if (currentSessionInfo.hubMode) {
+                        updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+                    }
+                    
+                    transaction.update(sessionRef, updates);
 
-                if (success) {
+                    // Decide what to do with the decision document
                     if (existingDecisionDoc) {
-                        await db.collection("decisions").doc(existingDecisionDoc.id).update(userDecision);
+                        transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
                     } else {
-                        await db.collection("decisions").add(userDecision);
-                    }
-                    
-                    if (userDecision.scenario.modelAnswer) {
-                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-                    } else {
-                        alert("Decision saved. This scenario has no feedback.");
-                        proceedToNextStep();
+                        const newDecisionRef = db.collection("decisions").doc();
+                        transaction.set(newDecisionRef, userDecision);
                     }
                 } else {
-                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
+                    throw "slots-full"; // Throw a specific error to be caught later
                 }
-            } catch (error) {
-                console.error("Save/Update decision failed: ", error);
-                alert("Could not save decision due to a server error.");
-            } finally {
+            }).then(() => {
+                // Transaction successful
+                if (userDecision.scenario.modelAnswer) {
+                    renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+                } else {
+                    alert("Decision saved. This scenario has no feedback.");
+                    proceedToNextStep();
+                }
+            }).catch(error => { 
+                if (error === "slots-full") {
+                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
+                } else {
+                    console.error("Transaction failed: ", error); 
+                    alert("Could not save decision due to a server error."); 
+                }
+            }).finally(() => {
                 saveButton.disabled = false;
                 saveButton.textContent = 'Save Decision';
+            });
+        }
+        
+        function proceedToNextStep() {
+            if (currentSessionInfo.hubMode) {
+                showView('hub-view');
+            } else if (currentScenarioIndex < scenarios.length - 1) {
+                showView('triage-view');
+                renderScenario(++currentScenarioIndex);
+            } else {
+                showView('welcome-screen');
+                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
             }
         }
     </script>
