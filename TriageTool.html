@@ -471,15 +471,20 @@ async function handleSaveDecision() {
             saveButton.textContent = 'Saving...';
 
             const currentScenario = scenarios[currentScenarioIndex];
+            if (!currentScenario) {
+                alert("Error: Cannot find current scenario data. Please refresh and try again.");
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Decision';
+                return;
+            }
 
-            // Create the decision object
             const userDecision = {
                 urgency: document.getElementById('urgency').value,
                 consultationType: document.getElementById('consultation-type').value,
                 requiredWith: document.getElementById('required-with').value,
                 triageNotes: document.getElementById('triage-notes').value.trim(),
-                scenario: currentScenario, // Keep the full scenario for record-keeping
-                scenarioId: currentScenario.id, // ** NEW: Add a simple ID for reliable querying **
+                scenario: currentScenario,
+                scenarioId: currentScenario.id,
                 gpName: gpName,
                 groupName: groupName,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
@@ -489,11 +494,10 @@ async function handleSaveDecision() {
             const sessionRef = db.collection('sessions').doc(groupName);
 
             try {
-                // ** THE FIX IS HERE: Query on the new, simple 'scenarioId' field **
                 const querySnapshot = await db.collection("decisions")
                     .where("groupName", "==", groupName)
                     .where("gpName", "==", gpName)
-                    .where("scenarioId", "==", currentScenario.id) // Use the simple ID
+                    .where("scenarioId", "==", currentScenario.id)
                     .limit(1)
                     .get();
 
@@ -501,10 +505,11 @@ async function handleSaveDecision() {
                 const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
 
                 const success = await db.runTransaction(async (transaction) => {
-                    const sessionDoc = await transaction.get(sessionRef);
+                    const sessionDoc = await transaction.get(sessionRef); // Fetched as 'sessionDoc'
                     if (!sessionDoc.exists) throw "Session document does not exist!";
                     
-                    const sessionData = doc.data();
+                    // ** THIS IS THE CORRECTED LINE **
+                    const sessionData = sessionDoc.data(); // Must use 'sessionDoc' here
                     const currentSlots = sessionData.slots;
                     const updates = {};
                     
