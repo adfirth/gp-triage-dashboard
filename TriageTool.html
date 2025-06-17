@@ -43,7 +43,7 @@
                     <main id="scenario-container" class="card p-6 sm:p-8"></main>
                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
-                     <div id="standard-nav" class="flex items-center space-x-3">
+                        <div id="standard-nav" class="flex items-center space-x-3">
                             <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Previous</button>
                             <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
                         </div>
@@ -69,7 +69,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 
     <script>
-// STEP 1: INITIALIZE FIREBASE
+        // STEP 1: INITIALIZE FIREBASE
         if (window.firebaseConfig) {
           firebase.initializeApp(window.firebaseConfig);
         }
@@ -524,7 +524,6 @@
                     
                     transaction.update(sessionRef, updates);
 
-                    // Decide what to do with the decision document
                     if (existingDecisionDoc) {
                         transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
                     } else {
@@ -532,10 +531,9 @@
                         transaction.set(newDecisionRef, userDecision);
                     }
                 } else {
-                    throw "slots-full"; // Throw a specific error to be caught later
+                    throw "slots-full"; 
                 }
             }).then(() => {
-                // Transaction successful
                 if (userDecision.scenario.modelAnswer) {
                     renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
                 } else {
@@ -555,6 +553,7 @@
             });
         }
         
+        // ** THIS IS THE MISSING FUNCTION **
         function proceedToNextStep() {
             if (currentSessionInfo.hubMode) {
                 showView('hub-view');
