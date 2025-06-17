@@ -499,7 +499,7 @@
             const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult / Message'];
             
             urgencies.forEach(urgency => types.forEach(type => {
-                const safeTypeId = type.replace(/\s|\//g, '-');
+                const safeTypeId = type.replace(/[\s/]+/g, '-'); // Replaces spaces AND slashes for the HTML element ID
                 const id = `slot-${urgency}-${safeTypeId}`;
                 const defaultVal = (urgency === 'Green') ? 10 : (urgency === 'Amber' ? 5 : 2);
                 slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
@@ -511,15 +511,14 @@
                 const hubMode = document.getElementById('hub-mode-checkbox').checked;
                 const slots = {};
                 urgencies.forEach(urgency => types.forEach(type => {
-                    const safeTypeId = type.replace(/\s|\//g, '-');
+                    const safeTypeId = type.replace(/[\s/]+/g, '-');
                     const inputId = `slot-${urgency}-${safeTypeId}`;
                     
-                    // ** THIS IS THE CRITICAL FIX **
-                    // Create the database key using the safe hyphenated version
-                    const safeKeyType = type.replace(' / ', ' - '); 
-                    const key = `${urgency}|${safeKeyType}`;
+                    // ** THE ROBUST FIX **
+                    // Create the database key using the same safe, sanitized version.
+                    const safeKey = `${urgency}|${safeTypeId}`;
                     
-                    slots[key] = parseInt(document.getElementById(inputId).value, 10) || 0;
+                    slots[safeKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
                 }));
                 const scenarioStatus = {};
                 if (hubMode) { scenarios.forEach(s => { scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null }; }); }
@@ -527,7 +526,7 @@
                 showScenarioList(groupName);
             });
         }
-
+        
         function showScenarioList(groupName) {
             appView.innerHTML = `<div id="scenario-list-view"><div class="sm:flex sm:items-center sm:justify-between mb-4"><div><button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button></div><div class="mt-4 sm:mt-0"><button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button></div></div><div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
             document.getElementById('back-to-group-btn').addEventListener('click', () => { if (sessionListener) sessionListener(); renderGroupSelection(); });
