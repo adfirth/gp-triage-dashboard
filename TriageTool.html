@@ -258,11 +258,40 @@
         
         function renderWelcomeScreen() {
             const container = document.getElementById('welcome-screen');
-            container.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2><p class="text-gray-600 mt-2">Welcome, ${gpName}!</p><div class="mt-6 max-w-sm mx-auto space-y-4"><input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July"><button id="start-btn" class="w-full btn btn-primary">Join Session</button><button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button></div>`;
+            container.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2>
+                <div class="mt-8 max-w-sm mx-auto space-y-4">
+                    <div>
+                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name for this Session</label>
+                        <input type="text" id="user-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" value="${gpName}">
+                    </div>
+                    <div>
+                        <label for="group-name-input" class="block text-sm font-medium text-gray-700 text-left">Group Name</label>
+                        <input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July">
+                    </div>
+                    <button id="start-btn" class="w-full btn btn-primary">Join Session</button>
+                    <button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button>
+                </div>`;
+            
             document.getElementById('logout-btn-welcome').addEventListener('click', () => auth.signOut());
+            
             document.getElementById('start-btn').addEventListener('click', () => {
                 const group = document.getElementById('group-name-input').value.trim();
-                if (group) joinSession(group); else alert('Please enter a Group Name.');
+                const sessionGpName = document.getElementById('user-name-input').value.trim();
+
+                if (!group) {
+                    alert('Please enter a Group Name.');
+                    return;
+                }
+                if (!sessionGpName) {
+                    alert('Please enter a name for this session.');
+                    return;
+                }
+                
+                // Update the global gpName variable for this session
+                gpName = sessionGpName;
+                
+                joinSession(group);
             });
         }
 
