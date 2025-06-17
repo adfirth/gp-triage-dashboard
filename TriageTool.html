@@ -385,6 +385,516 @@
                                 </a>
                             </div>
                         </div>` : ''}
+                        <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+
+    <script>
+        // STEP 1: INITIALIZE FIREBASE
+        if (window.firebaseConfig) {
+          firebase.initializeApp(window.firebaseConfig);
+        }
+
+        // STEP 2: DECLARE GLOBAL VARIABLES
+        let auth, db;
+        let scenarios = [];
+        let gpName = '';
+        let groupName = '';
+        let currentSessionInfo = {};
+        let currentScenarioIndex = 0;
+        let unsubscribeFromSlots;
+        
+        const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
+
+        // STEP 3: SET UP THE DOM EVENT LISTENER
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkFirebase = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+                    try {
+                        auth = firebase.auth();
+                        db = firebase.firestore();
+                        clearInterval(checkFirebase);
+                        main();
+                    } catch (e) {
+                        console.error("Error initializing Firebase services:", e);
+                    }
+                }
+            }, 50);
+
+            // Delegated event listener for dynamically created buttons like 'Continue'
+            document.addEventListener('click', (event) => {
+                if (event.target && event.target.id === 'continue-btn') {
+                    proceedToNextStep();
+                }
+            });
+        });
+
+        // STEP 4: ALL OF YOUR APPLICATION FUNCTIONS
+        function main() {
+            showView('loading-view');
+            auth.onAuthStateChanged(async (user) => {
+                if (unsubscribeFromSlots) unsubscribeFromSlots();
+                if (user) {
+                    try {
+                        const userProfileDoc = await db.collection('users').doc(user.uid).get();
+                        if (userProfileDoc.exists) {
+                            const userProfile = userProfileDoc.data();
+                            gpName = userProfile.displayName;
+                            if (userProfile.role === 'facilitator') {
+                                showView('facilitator-hub-view');
+                                renderFacilitatorView();
+                            } else if (userProfile.status === 'approved') {
+                                showView('welcome-screen');
+                                renderWelcomeScreen();
+                            } else {
+                                showView('access-denied-view');
+                                renderAccessDenied();
+                            }
+                        } else {
+                            await db.collection('users').doc(user.uid).set({ 
+                                displayName: user.displayName || user.email.split('@')[0], 
+                                email: user.email, 
+                                role: 'trainee', 
+                                status: 'pending' 
+                            });
+                            renderAccessDenied();
+                        }
+                    } catch (error) {
+                        console.error("Auth flow error:", error);
+                        showView('access-denied-view');
+                    }
+                } else {
+                    showView('auth-view');
+                    renderAuthForm();
+                }
+            });
+        }
+
+        async function loadScenariosFromDB() {
+            scenarios = [];
+            try {
+                const snapshot = await db.collection('scenarios').orderBy('id').get();
+                scenarios = snapshot.docs.map(doc => doc.data());
+            } catch (error) {
+                document.getElementById('welcome-screen').innerHTML = `<p class="text-red-500">Could not load scenarios.</p>`;
+                throw error;
+            }
+        }
+
+        function showView(viewId) {
+            allViews.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.classList.add('hidden');
+            });
+            const viewToShow = document.getElementById(viewId);
+            if(viewToShow) viewToShow.classList.remove('hidden');
+        }
+
+        function renderAuthForm() {
+            const container = document.getElementById('auth-view');
+            container.innerHTML = `
+                <div id="login-form">
+                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Login</h2>
+                    <div class="space-y-4">
+                        <div><label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="login-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <div><label for="login-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="login-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <p id="auth-error" class="text-red-500 text-sm hidden"></p>
+                        <button id="login-btn" class="w-full btn btn-primary">Login</button>
+                    </div>
+                    <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Create one</a></p>
+                </div>
+                <div id="signup-form" class="hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
+                    <p class="text-center text-sm text-gray-500 mb-6">Your account will require approval by a facilitator.</p>
+                    <div class="space-y-4">
+                        <div><label for="signup-name" class="block text-sm font-medium text-gray-700">Display Name</label><input type="text" id="signup-name" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3" placeholder="e.g. Dr Smith"></div>
+                        <div><label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="signup-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <div><label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="signup-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <button id="signup-btn" class="w-full btn btn-primary">Create Account</button>
+                    </div>
+                    <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a></p>
+                </div>`;
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const errorP = document.getElementById('auth-error');
+            document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
+            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+            document.getElementById('login-btn').addEventListener('click', () => {
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-password').value;
+                errorP.classList.add('hidden');
+                auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
+            });
+            document.getElementById('signup-btn').addEventListener('click', async () => {
+                const name = document.getElementById('signup-name').value.trim();
+                const email = document.getElementById('signup-email').value;
+                const pass = document.getElementById('signup-password').value;
+                errorP.classList.add('hidden');
+                if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+                    await userCredential.user.updateProfile({ displayName: name });
+                } catch(err) {
+                    errorP.textContent = err.message;
+                    errorP.classList.remove('hidden');
+                }
+            });
+        }
+        function renderAccessDenied() {
+            const container = document.getElementById('access-denied-view');
+            container.innerHTML = `<h2 class="text-2xl font-bold text-amber-600">Account Pending Approval</h2><p class="text-gray-600 mt-4">Your account requires approval from a facilitator.</p><button id="denied-logout-btn" class="mt-6 text-sm text-gray-500 hover:underline">Logout</button>`;
+            document.getElementById('denied-logout-btn').addEventListener('click', () => auth.signOut());
+        }
+
+        function renderFacilitatorView() {
+            const container = document.getElementById('facilitator-hub-view');
+            container.innerHTML = `<h2 class="text-2xl font-bold">Facilitator Access</h2><p class="mt-2">This is the trainee tool. Please use the Dashboard to manage sessions.</p><button id="logout-btn-facilitator" class="mt-4 text-sm underline">Logout</button>`;
+            document.getElementById('logout-btn-facilitator').addEventListener('click', () => auth.signOut());
+        }
+        
+        function renderWelcomeScreen() {
+            const container = document.getElementById('welcome-screen');
+            container.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2>
+                <div class="mt-8 max-w-sm mx-auto space-y-4">
+                    <div>
+                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name for this Session</label>
+                        <input type="text" id="user-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" value="${gpName}">
+                    </div>
+                    <div>
+                        <label for="group-name-input" class="block text-sm font-medium text-gray-700 text-left">Group Name</label>
+                        <input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July">
+                    </div>
+                    <button id="start-btn" class="w-full btn btn-primary">Join Session</button>
+                    <button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button>
+                </div>`;
+            
+            document.getElementById('logout-btn-welcome').addEventListener('click', () => auth.signOut());
+            
+            document.getElementById('start-btn').addEventListener('click', () => {
+                const group = document.getElementById('group-name-input').value.trim();
+                const sessionGpName = document.getElementById('user-name-input').value.trim();
+
+                if (!group) { alert('Please enter a Group Name.'); return; }
+                if (!sessionGpName) { alert('Please enter a name for this session.'); return; }
+                
+                gpName = sessionGpName;
+                joinSession(group);
+            });
+        }
+
+        async function joinSession(group) {
+            try {
+                await loadScenariosFromDB();
+                const sessionDoc = await db.collection('sessions').doc(group).get();
+                if (!sessionDoc.exists) {
+                    alert('This group session has not been set up. Please check the Group Name.');
+                    return;
+                }
+                groupName = group;
+                currentSessionInfo = sessionDoc.data();
+                document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
+                
+                listenToSlots();
+
+                document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+                document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
+                document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
+
+                if (currentSessionInfo.hubMode) {
+                    showView('hub-view');
+                    document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
+                    document.getElementById('get-case-btn').addEventListener('click', getNextCase);
+                } else {
+                    showView('triage-view');
+                    document.getElementById('standard-nav').classList.remove('hidden');
+                    renderScenario(0);
+                }
+            } catch (error) {
+                console.error("Error joining session:", error);
+                alert("An error occurred while joining the session.");
+            }
+        }
+        
+        async function getNextCase() {
+            const hubStatus = document.getElementById('hub-status');
+            hubStatus.textContent = 'Finding next available case...';
+            const sessionRef = db.collection('sessions').doc(groupName);
+            try {
+                const nextCaseId = await db.runTransaction(async (transaction) => {
+                    const sessionDoc = await transaction.get(sessionRef);
+                    if (!sessionDoc.exists) throw new Error("Session not found");
+                    const status = sessionDoc.data().scenarioStatus;
+                    const unlockedId = scenarios.map(s => s.id).find(id => status[id] && status[id].status === 'unlocked');
+                    if (unlockedId) {
+                        const newStatus = { ...status };
+                        newStatus[unlockedId] = { status: 'locked', lockedBy: gpName, lockedAt: firebase.firestore.FieldValue.serverTimestamp() };
+                        transaction.update(sessionRef, { scenarioStatus: newStatus });
+                        return unlockedId;
+                    } else { return null; }
+                });
+
+                if (nextCaseId) {
+                    const scenarioIndex = scenarios.findIndex(s => s.id === nextCaseId);
+                    showView('triage-view');
+                    document.getElementById('standard-nav').classList.add('hidden');
+                    renderScenario(scenarioIndex);
+                } else {
+                    hubStatus.textContent = 'All cases have been completed!';
+                }
+            } catch (error) {
+                hubStatus.textContent = 'Could not get case. Please try again.';
+            }
+        }
+        
+        function listenToSlots() {
+            if (unsubscribeFromSlots) unsubscribeFromSlots();
+            const sessionRef = db.collection('sessions').doc(groupName);
+            unsubscribeFromSlots = sessionRef.onSnapshot(doc => {
+                if (!doc.exists) { document.getElementById('slot-display').innerHTML = `<p class="text-red-500">Session ended.</p>`; return; }
+                const slots = doc.data().slots;
+                const slotDisplay = document.getElementById('slot-display');
+                slotDisplay.innerHTML = '';
+                const order = ['Red', 'Amber', 'Green'];
+                order.forEach(urgency => {
+                    const urgencySlots = Object.keys(slots).filter(key => key.startsWith(urgency)).sort();
+                    if(urgencySlots.length > 0) {
+                        slotDisplay.innerHTML += `<div class="pt-2"><h4 class="font-bold text-gray-700">${urgency}</h4></div>`;
+                        urgencySlots.forEach(key => {
+                            const type = key.split('|')[1].replace(/-/g, ' ');
+                            const count = slots[key];
+                            let colorClass = 'slot-high';
+                            if (count <= 2) colorClass = 'slot-low';
+                            else if (count <= 5) colorClass = 'slot-medium';
+                            slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold ${colorClass}">${count}</span></div>`;
+                        });
+                    }
+                });
+            });
+        }
+        
+        function renderScenario(index) {
+            currentScenarioIndex = index;
+            const scenario = scenarios[index];
+            if (!scenario) {
+                document.getElementById('scenario-container').innerHTML = `<p class="text-red-500">Error: Could not load scenario data.</p>`;
+                return;
+            }
+
+            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult - Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+            
+            const scenarioDetailsHtml = `
+                <div class="space-y-6">
+                    <div class="p-4 bg-indigo-50 rounded-lg">
+                        <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
+                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                            <p><b>Name:</b> ${scenario.name || 'Not provided'}</p>
+                            <p><b>Age:</b> ${scenario.age || 'Not provided'}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Describe the problem:</h4>
+                            <p class="mt-1 p-3 bg-gray-100 rounded-md">${scenario.problem || 'Not provided'}</p>
+                        </div>
+                        ${scenario.attachments ? `
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Attachment:</h4>
+                            <div class="mt-2">
+                                <a href="${scenario.attachments}" target="_blank">
+                                    <img src="${scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
+                                </a>
+                            </div>
+                        </div>` : ''}
+                        <div>
+                            <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
+                            <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Have you tried anything to help?</h4>
+                            <p class="mt-1">${scenario.selfHelp || 'Not provided'}</p>
+                        </div>
+                    </div>
+                    <div class="border-t pt-4 space-y-4">
+                         <div>
+                            <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
+                            <p class="mt-1 text-red-600 font-medium">${scenario.worried || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Expectations:</h4>
+                            <p class="mt-1">${scenario.expectations || 'Not provided'}</p>
+                        </div>
+                    </div>
+                     <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Contact method preference:</h4>
+                            <p class="mt-1">${scenario.contactMethod || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Preferred clinician:</h4>
+                            <p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
+            updateUI();
+        }
+        
+        function renderFeedbackView(userDecision, modelAnswer) {
+            const container = document.getElementById('feedback-view');
+            let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
+
+            const comparisons = [
+                { title: 'Urgency', user: userDecision.urgency, model: modelAnswer.urgency },
+                { title: 'Consultation Type', user: userDecision.consultationType, model: modelAnswer.consultationType },
+                { title: 'Required With', user: userDecision.requiredWith, model: modelAnswer.requiredWith }
+            ];
+
+            comparisons.forEach(comp => {
+                if (!comp.model) return;
+                const isCorrect = comp.model.accepted.includes(comp.user);
+                const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
+                
+                feedbackHtml += `
+                    <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
+                        <div class="flex justify-between items-center">
+                           <h3 class="font-bold text-lg text-gray-900">${comp.title}</h3>
+                           ${resultIcon}
+                        </div>
+                        <div class="grid grid-cols-2 gap-4 text-sm mt-2">
+                            <div><span class="font-semibold">Your Answer:</span> ${comp.user.replace(/-/g, ' ')}</div>
+                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ').replace(/-/g, ' ')}</div>
+                        </div>
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            feedbackHtml += `</div><div class="mt-8 text-center"><button id="continue-btn" class="btn btn-primary">Continue</button></div>`;
+            container.innerHTML = feedbackHtml;
+            showView('feedback-view');
+        }
+        
+        function updateUI() {
+            document.getElementById('scenario-counter').textContent = `Scenario ${currentScenarioIndex + 1} of ${scenarios.length}`;
+            document.getElementById('prev-btn').disabled = currentScenarioIndex === 0;
+            document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
+        }
+
+        async function handleSaveDecision() {
+            const saveButton = document.getElementById('save-btn');
+            const currentScenario = scenarios[currentScenarioIndex];
+            if (!currentScenario) {
+                alert("Error: Cannot find current scenario data. Please try again.");
+                return;
+            }
+
+            saveButton.disabled = true;
+            saveButton.textContent = 'Saving...';
+            
+            const userDecision = {
+                urgency: document.getElementById('urgency').value,
+                consultationType: document.getElementById('consultation-type').value,
+                requiredWith: document.getElementById('required-with').value,
+                triageNotes: document.getElementById('triage-notes').value.trim(),
+                scenario: currentScenario,
+                scenarioId: currentScenario.id,
+                gpName: gpName,
+                groupName: groupName,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
+            const sessionRef = db.collection('sessions').doc(groupName);
+
+            try {
+                const querySnapshot = await db.collection("decisions")
+                    .where("groupName", "==", groupName)
+                    .where("gpName", "==", gpName)
+                    .where("scenarioId", "==", currentScenario.id)
+                    .limit(1)
+                    .get();
+
+                const existingDecisionDoc = querySnapshot.docs[0];
+                const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+                
+                const success = await db.runTransaction(async (transaction) => {
+                    const sessionDoc = await transaction.get(sessionRef);
+                    if (!sessionDoc.exists) throw "Session document does not exist!";
+                    
+                    const sessionData = sessionDoc.data();
+                    const currentSlots = sessionData.slots;
+                    const updates = {};
+                    
+                    const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
+                    const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
+
+                    if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
+                        if (isSwapping) {
+                           updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
+                        }
+                        if (!currentSessionInfo.hubMode) {
+                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+                        }
+                        if (currentSessionInfo.hubMode) {
+                            updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+                        }
+                        
+                        if (Object.keys(updates).length > 0) {
+                            transaction.update(sessionRef, updates);
+                        }
+
+                        if (existingDecisionDoc) {
+                            transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+                        } else {
+                            const newDecisionRef = db.collection("decisions").doc();
+                            transaction.set(newDecisionRef, userDecision);
+                        }
+                        return true;
+
+                    } else {
+                        return false; 
+                    }
+                });
+
+                if (success) {
+                    if (userDecision.scenario.modelAnswer) {
+                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+                    } else {
+                        alert("Decision saved. This scenario has no feedback.");
+                        proceedToNextStep();
+                    }
+                } else {
+                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
+                }
+            } catch (error) {
+                console.error("Save/Update decision failed: ", error);
+                alert("Could not save decision due to a server error.");
+            } finally {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Decision';
+            }
+        }
+        
+        function proceedToNextStep() {
+            if (currentSessionInfo.hubMode) {
+                showView('hub-view');
+            } else if (currentScenarioIndex < scenarios.length - 1) {
+                showView('triage-view');
+                renderScenario(++currentScenarioIndex);
+            } else {
+                showView('welcome-screen');
+                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
                         <div>
                             <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
                             <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
