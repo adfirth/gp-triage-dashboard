@@ -277,33 +277,34 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
             });
         }
 
-        async function joinSession(group) {
-            try {
-                await loadScenariosFromDB();
-                const sessionDoc = await db.collection('sessions').doc(group).get();
-                if (!sessionDoc.exists) {
-                    alert('This group session has not been set up. Please check the Group Name.');
-                    return;
-                }
-                groupName = group;
-                currentSessionInfo = sessionDoc.data();
-                document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
-                
-                listenToSlots();
-
-                    showView('hub-view');
-                    document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
-                    document.getElementById('get-case-btn').addEventListener('click', getNextCase);
-                } else {
-                    showView('triage-view');
-                    document.getElementById('standard-nav').classList.remove('hidden');
-                    renderScenario(0);
-                }
-            } catch (error) {
-                console.error("Error joining session:", error);
-                alert("An error occurred while joining the session.");
-            }
+       async function joinSession(group) {
+    try {
+        await loadScenariosFromDB();
+        const sessionDoc = await db.collection('sessions').doc(group).get();
+        if (!sessionDoc.exists) {
+            alert('This group session has not been set up. Please check the Group Name.');
+            return;
         }
+        groupName = group;
+        currentSessionInfo = sessionDoc.data();
+        document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
+
+        listenToSlots();
+
+        if (currentSessionInfo.hubMode) {
+            showView('hub-view');
+            document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
+            document.getElementById('get-case-btn').addEventListener('click', getNextCase);
+        } else {
+            showView('triage-view');
+            document.getElementById('standard-nav').classList.remove('hidden');
+            renderScenario(0);
+        }
+    } catch (error) {
+        console.error("Error joining session:", error);
+        alert("An error occurred while joining the session.");
+    }
+}
         
         async function getNextCase() {
             const hubStatus = document.getElementById('hub-status');
