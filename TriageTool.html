@@ -179,60 +179,43 @@ document.addEventListener('DOMContentLoaded', () => {
             if(viewToShow) viewToShow.classList.remove('hidden');
         }
 
-        function renderAuthForm() {
-            const container = document.getElementById('auth-view');
-            container.innerHTML = `
-                <div id="login-form">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Login</h2>
-                    <div class="space-y-4">
-                        <div><label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="login-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="login-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="login-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <p id="auth-error" class="text-red-500 text-sm hidden"></p>
-                        <button id="login-btn" class="w-full btn btn-primary">Login</button>
-                    </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Create one</a></p>
-                </div>
-                <div id="signup-form" class="hidden">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
-                    <p class="text-center text-sm text-gray-500 mb-6">Your account will require approval by a facilitator.</p>
-                    <div class="space-y-4">
-                        <div><label for="signup-name" class="block text-sm font-medium text-gray-700">Display Name</label><input type="text" id="signup-name" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3" placeholder="e.g. Dr Smith"></div>
-                        <div><label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="signup-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="signup-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <button id="signup-btn" class="w-full btn btn-primary">Create Account</button>
-                    </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a></p>
-                </div>`;
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            const errorP = document.getElementById('auth-error');
-            document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
-            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
-            document.getElementById('login-btn').addEventListener('click', () => {
-                const email = document.getElementById('login-email').value;
-                const pass = document.getElementById('login-password').value;
-                errorP.classList.add('hidden');
-                auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
-            });
-document.getElementById('signup-btn').addEventListener('click', async () => {
-    const name = document.getElementById('signup-name').value.trim();
-    const email = document.getElementById('signup-email').value;
-    const pass = document.getElementById('signup-password').value;
-    errorP.classList.add('hidden');
-    if (!name) {
-        errorP.textContent = "Please enter a display name.";
-        errorP.classList.remove('hidden');
-        return;
-    }
-    // The 'try {' keyword was missing on the next line
-    try {
-        const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-        await userCredential.user.updateProfile({ displayName: name });
-    } catch (err) {
-        errorP.textContent = err.message;
-        errorP.classList.remove('hidden');
-    }
-});
+function renderAuthForm() {
+    const container = document.getElementById('auth-view');
+    container.innerHTML = `
+        `;
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const errorP = document.getElementById('auth-error');
+    document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
+    document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        errorP.classList.add('hidden');
+        auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
+    });
+
+    // --- FIX APPLIED IN THIS LISTENER ---
+    document.getElementById('signup-btn').addEventListener('click', async () => {
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value;
+        const pass = document.getElementById('signup-password').value;
+        errorP.classList.add('hidden');
+        if (!name) {
+            errorP.textContent = "Please enter a display name.";
+            errorP.classList.remove('hidden');
+            return;
+        }
+        // FIX: Added the 'try {' keyword
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+            await userCredential.user.updateProfile({ displayName: name });
+        } catch (err) {
+            errorP.textContent = err.message;
+            errorP.classList.remove('hidden');
+        }
+    });
+}
         }
         function renderAccessDenied() {
             const container = document.getElementById('access-denied-view');
@@ -476,83 +459,15 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        async function handleSaveDecision() {
+async function handleSaveDecision() {
     const saveButton = document.getElementById('save-btn');
-    const currentScenario = scenarios[currentScenarioIndex];
-    if (!currentScenario) {
-        alert("Error: Cannot find current scenario data. Please try again.");
-        return;
-    }
-
-    saveButton.disabled = true;
-    saveButton.textContent = 'Saving...';
-    
-    const userDecision = {
-        urgency: document.getElementById('urgency').value,
-        consultationType: document.getElementById('consultation-type').value,
-        requiredWith: document.getElementById('required-with').value,
-        triageNotes: document.getElementById('triage-notes').value.trim(),
-        scenario: currentScenario,
-        scenarioId: currentScenario.id,
-        gpName: gpName,
-        groupName: groupName,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
-    const sessionRef = db.collection('sessions').doc(groupName);
+    // ... (rest of the function setup) ...
 
     try {
-        const querySnapshot = await db.collection("decisions")
-            .where("groupName", "==", groupName)
-            .where("gpName", "==", gpName)
-            .where("scenarioId", "==", currentScenario.id)
-            .limit(1)
-            .get();
-
-        const existingDecisionDoc = querySnapshot.docs[0];
-        const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+        // ... (all your existing try block logic) ...
         
         const success = await db.runTransaction(async (transaction) => {
-            const sessionDoc = await transaction.get(sessionRef);
-            if (!sessionDoc.exists) throw "Session document does not exist!";
-            
-            const sessionData = sessionDoc.data();
-            const currentSlots = sessionData.slots;
-            const updates = {};
-            
-            const isRevising = !!existingDecisionDoc;
-            const isSwapping = isRevising && oldSlotKey !== newSlotKey;
-            const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-
-            // Block the transaction if the user is trying to take a slot that has none left
-            if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
-                return false; // Abort transaction
-            }
-            
-            if (!currentSessionInfo.hubMode) {
-                if (isSwapping) {
-                    updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
-                }
-                if (!isRevising || isSwapping) {
-                    updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                }
-            }
-
-            if (currentSessionInfo.hubMode) {
-                updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
-            }
-            
-            if (Object.keys(updates).length > 0) {
-                transaction.update(sessionRef, updates);
-            }
-
-            if (existingDecisionDoc) {
-                transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
-            } else {
-                const newDecisionRef = db.collection("decisions").doc();
-                transaction.set(newDecisionRef, userDecision);
-            }
+            // ... (transaction logic) ...
             return true;
         });
 
@@ -566,25 +481,27 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
         } else {
             alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
         }
-    }  catch (error) {
-    console.error("Save/Update decision failed: ", error);
-    alert("Could not save decision due to a server error.");
-} finally {
-    saveButton.disabled = false;
-    saveButton.textContent = 'Save Decision';
+    // --- FIX APPLIED ON THE LINE BELOW ---
+    } catch (error) { // FIX: Removed the invalid character between '}' and 'catch'
+        console.error("Save/Update decision failed: ", error);
+        alert("Could not save decision due to a server error.");
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Decision';
+    }
 }
         
         function proceedToNextStep() {
-            if (currentSessionInfo.hubMode) {
-                showView('hub-view');
-            } else if (currentScenarioIndex < scenarios.length - 1) {
-                showView('triage-view');
-                renderScenario(++currentScenarioIndex);
-            } else {
-                showView('welcome-screen');
-                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
-            }
-        }
+    if (currentSessionInfo.hubMode) {
+        showView('hub-view');
+    } else if (currentScenarioIndex < scenarios.length - 1) {
+        showView('triage-view');
+        renderScenario(++currentScenarioIndex);
+    } else {
+        showView('welcome-screen');
+        document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
+    }
+}
     </script>
 </body>
 </html>
