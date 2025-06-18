@@ -82,6 +82,7 @@
         let currentSessionInfo = {};
         let currentScenarioIndex = 0;
         let unsubscribeFromSlots;
+        let unsavedDecisions = {};
         
         const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
 
@@ -103,11 +104,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Listeners are attached ONCE here for robustness ---
     document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
     document.getElementById('prev-btn').addEventListener('click', () => {
-        if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
-    });
-    document.getElementById('next-btn').addEventListener('click', () => {
-        if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
-    });
+    saveUnsavedState(); // <-- ADD THIS LINE
+    if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+    saveUnsavedState(); // <-- ADD THIS LINE
+    if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+});
 
     // Delegated event listener for dynamically created buttons like 'Continue'
     document.addEventListener('click', (event) => {
@@ -372,6 +375,13 @@ async function joinSession(group) {
             if (!scenario) {
                 document.getElementById('scenario-container').innerHTML = `<p class="text-red-500">Error: Could not load scenario data.</p>`;
                 return;
+                const savedState = unsavedDecisions[scenario.id];
+    if (savedState) {
+        document.getElementById('urgency').value = savedState.urgency;
+        document.getElementById('consultation-type').value = savedState.consultationType;
+        document.getElementById('required-with').value = savedState.requiredWith;
+        document.getElementById('triage-notes').value = savedState.triageNotes;
+    }
             }
 
             const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
@@ -478,6 +488,27 @@ async function joinSession(group) {
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
+function saveUnsavedState() {
+    const scenario = scenarios[currentScenarioIndex];
+    if (!scenario) return; // Exit if there's no scenario
+
+    // Find the form elements
+    const urgencyEl = document.getElementById('urgency');
+    const consultationTypeEl = document.getElementById('consultation-type');
+    const requiredWithEl = document.getElementById('required-with');
+    const triageNotesEl = document.getElementById('triage-notes');
+
+    // Only save if the form actually exists on the page
+    if (urgencyEl && consultationTypeEl && requiredWithEl && triageNotesEl) {
+        unsavedDecisions[scenario.id] = {
+            urgency: urgencyEl.value,
+            consultationType: consultationTypeEl.value,
+            requiredWith: requiredWithEl.value,
+            triageNotes: triageNotesEl.value
+        };
+    }
+}
+        
 async function handleSaveDecision() {
     const saveButton = document.getElementById('save-btn');
     const currentScenario = scenarios[currentScenarioIndex];
@@ -576,6 +607,7 @@ async function handleSaveDecision() {
 
         // 4. --- Post-Transaction UI Update ---
         if (success) {
+            delete unsavedDecisions[userDecision.scenarioId];
             // If the transaction succeeded, show the feedback screen or move on
             if (userDecision.scenario.modelAnswer) {
                 renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
