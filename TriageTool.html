@@ -523,17 +523,14 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
             const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
             // Block the transaction if the user is trying to take a slot that has none left
-            // This applies when it's a new decision, or when swapping to a new category
             if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
                 return false; // Abort transaction
             }
             
             if (!currentSessionInfo.hubMode) {
-                // If swapping, give back the old slot
                 if (isSwapping) {
                     updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                 }
-                // If it's a new decision OR a swap, take the new slot
                 if (!isRevising || isSwapping) {
                     updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
                 }
@@ -554,7 +551,6 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
                 transaction.set(newDecisionRef, userDecision);
             }
             return true;
-
         });
 
         if (success) {
