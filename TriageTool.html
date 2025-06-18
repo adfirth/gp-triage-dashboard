@@ -564,13 +564,12 @@ document.getElementById('signup-btn').addEventListener('click', async () => {
         } else {
             alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
         }
-    } catch (error) {
-        console.error("Save/Update decision failed: ", error);
-        alert("Could not save decision due to a server error.");
-    } finally {
-        saveButton.disabled = false;
-        saveButton.textContent = 'Save Decision';
-    }
+    }  catch (error) {
+    console.error("Save/Update decision failed: ", error);
+    alert("Could not save decision due to a server error.");
+} finally {
+    saveButton.disabled = false;
+    saveButton.textContent = 'Save Decision';
 }
         
         function proceedToNextStep() {
