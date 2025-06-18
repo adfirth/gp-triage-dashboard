@@ -260,7 +260,8 @@ function renderAuthForm() {
             });
         }
 
-       async function joinSession(group) {
+       // Replace your entire joinSession function with this one.
+async function joinSession(group) {
     try {
         await loadScenariosFromDB();
         const sessionDoc = await db.collection('sessions').doc(group).get();
@@ -274,7 +275,6 @@ function renderAuthForm() {
 
         listenToSlots();
 
-        // This is the corrected IF/ELSE block
         if (currentSessionInfo.hubMode) {
             showView('hub-view');
             document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
