@@ -85,34 +85,37 @@
         
         const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
 
-        // STEP 3: SET UP THE DOM EVENT LISTENER
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkFirebase = setInterval(() => {
-                if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-                    try {
-                        auth = firebase.auth();
-                        db = firebase.firestore();
-                        clearInterval(checkFirebase);
-                        main();
-                    } catch (e) {
-                        console.error("Error initializing Firebase services:", e);
-                    }
-                }
-            }, 50);
+       // STEP 3: SET UP THE DOM EVENT LISTENER
+document.addEventListener('DOMContentLoaded', () => {
+    const checkFirebase = setInterval(() => {
+        if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+            try {
+                auth = firebase.auth();
+                db = firebase.firestore();
+                clearInterval(checkFirebase);
+                main();
+            } catch (e) {
+                console.error("Error initializing Firebase services:", e);
+            }
+        }
+    }, 50);
 
-            document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
-            document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
-            document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
+    // --- Listeners are attached ONCE here for robustness ---
+    document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+    document.getElementById('prev-btn').addEventListener('click', () => {
+        if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+    });
+    document.getElementById('next-btn').addEventListener('click', () => {
+        if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+    });
 
-                if (currentSessionInfo.hubMode) {
-            // Delegated event listener for dynamically created buttons like 'Continue'
-            document.addEventListener('click', (event) => {
-                if (event.target && event.target.id === 'continue-btn') {
-                    proceedToNextStep();
-                }
-            });
-        });
-
+    // Delegated event listener for dynamically created buttons like 'Continue'
+    document.addEventListener('click', (event) => {
+        if (event.target && event.target.id === 'continue-btn') {
+            proceedToNextStep();
+        }
+    });
+});
         // STEP 4: ALL OF YOUR APPLICATION FUNCTIONS
         function main() {
             showView('loading-view');
