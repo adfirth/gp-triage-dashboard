@@ -100,6 +100,11 @@
                 }
             }, 50);
 
+            document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+            document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
+            document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
+
+                if (currentSessionInfo.hubMode) {
             // Delegated event listener for dynamically created buttons like 'Continue'
             document.addEventListener('click', (event) => {
                 if (event.target && event.target.id === 'continue-btn') {
@@ -211,8 +216,6 @@
                 const pass = document.getElementById('signup-password').value;
                 errorP.classList.add('hidden');
                 if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
-                console.log(`Preparing to create user. Email: [<span class="math-inline">\{email\}\], Password\: \[</span>{pass}], Name: [${name}]`);
-                try {
                     const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
                     await userCredential.user.updateProfile({ displayName: name });
                 } catch(err) {
@@ -278,11 +281,6 @@
                 
                 listenToSlots();
 
-                document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
-                document.getElementById('prev-btn').addEventListener('click', () => { if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex); });
-                document.getElementById('next-btn').addEventListener('click', () => { if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex); });
-
-                if (currentSessionInfo.hubMode) {
                     showView('hub-view');
                     document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
                     document.getElementById('get-case-btn').addEventListener('click', getNextCase);
@@ -467,99 +465,107 @@
         }
 
         async function handleSaveDecision() {
-            const saveButton = document.getElementById('save-btn');
-            const currentScenario = scenarios[currentScenarioIndex];
-            if (!currentScenario) {
-                alert("Error: Cannot find current scenario data. Please try again.");
-                return;
-            }
+    const saveButton = document.getElementById('save-btn');
+    const currentScenario = scenarios[currentScenarioIndex];
+    if (!currentScenario) {
+        alert("Error: Cannot find current scenario data. Please try again.");
+        return;
+    }
 
-            saveButton.disabled = true;
-            saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving...';
+    
+    const userDecision = {
+        urgency: document.getElementById('urgency').value,
+        consultationType: document.getElementById('consultation-type').value,
+        requiredWith: document.getElementById('required-with').value,
+        triageNotes: document.getElementById('triage-notes').value.trim(),
+        scenario: currentScenario,
+        scenarioId: currentScenario.id,
+        gpName: gpName,
+        groupName: groupName,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
+    const sessionRef = db.collection('sessions').doc(groupName);
+
+    try {
+        const querySnapshot = await db.collection("decisions")
+            .where("groupName", "==", groupName)
+            .where("gpName", "==", gpName)
+            .where("scenarioId", "==", currentScenario.id)
+            .limit(1)
+            .get();
+
+        const existingDecisionDoc = querySnapshot.docs[0];
+        const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+        
+        const success = await db.runTransaction(async (transaction) => {
+            const sessionDoc = await transaction.get(sessionRef);
+            if (!sessionDoc.exists) throw "Session document does not exist!";
             
-            const userDecision = {
-                urgency: document.getElementById('urgency').value,
-                consultationType: document.getElementById('consultation-type').value,
-                requiredWith: document.getElementById('required-with').value,
-                triageNotes: document.getElementById('triage-notes').value.trim(),
-                scenario: currentScenario,
-                scenarioId: currentScenario.id,
-                gpName: gpName,
-                groupName: groupName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            const sessionData = sessionDoc.data();
+            const currentSlots = sessionData.slots;
+            const updates = {};
+            
+            const isRevising = !!existingDecisionDoc;
+            const isSwapping = isRevising && oldSlotKey !== newSlotKey;
+            const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-            const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
-            const sessionRef = db.collection('sessions').doc(groupName);
-
-            try {
-                const querySnapshot = await db.collection("decisions")
-                    .where("groupName", "==", groupName)
-                    .where("gpName", "==", gpName)
-                    .where("scenarioId", "==", currentScenario.id)
-                    .limit(1)
-                    .get();
-
-                const existingDecisionDoc = querySnapshot.docs[0];
-                const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
-                
-                const success = await db.runTransaction(async (transaction) => {
-                    const sessionDoc = await transaction.get(sessionRef);
-                    if (!sessionDoc.exists) throw "Session document does not exist!";
-                    
-                    const sessionData = sessionDoc.data();
-                    const currentSlots = sessionData.slots;
-                    const updates = {};
-                    
-                    const isSwapping = existingDecisionDoc && oldSlotKey !== newSlotKey;
-                    const hasSlots = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-
-                    if (currentSessionInfo.hubMode || hasSlots || isSwapping) {
-                        if (isSwapping) {
-                           updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
-                        }
-                        if (!currentSessionInfo.hubMode) {
-                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                        }
-                        if (currentSessionInfo.hubMode) {
-                            updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
-                        }
-                        
-                        if (Object.keys(updates).length > 0) {
-                            transaction.update(sessionRef, updates);
-                        }
-
-                        if (existingDecisionDoc) {
-                            transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
-                        } else {
-                            const newDecisionRef = db.collection("decisions").doc();
-                            transaction.set(newDecisionRef, userDecision);
-                        }
-                        return true;
-
-                    } else {
-                        return false; 
-                    }
-                });
-
-                if (success) {
-                    if (userDecision.scenario.modelAnswer) {
-                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-                    } else {
-                        alert("Decision saved. This scenario has no feedback.");
-                        proceedToNextStep();
-                    }
-                } else {
-                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
-                }
-            } catch (error) {
-                console.error("Save/Update decision failed: ", error);
-                alert("Could not save decision due to a server error.");
-            } finally {
-                saveButton.disabled = false;
-                saveButton.textContent = 'Save Decision';
+            // Block the transaction if the user is trying to take a slot that has none left
+            // This applies when it's a new decision, or when swapping to a new category
+            if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
+                return false; // Abort transaction
             }
+            
+            if (!currentSessionInfo.hubMode) {
+                // If swapping, give back the old slot
+                if (isSwapping) {
+                    updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
+                }
+                // If it's a new decision OR a swap, take the new slot
+                if (!isRevising || isSwapping) {
+                    updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+                }
+            }
+
+            if (currentSessionInfo.hubMode) {
+                updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                transaction.update(sessionRef, updates);
+            }
+
+            if (existingDecisionDoc) {
+                transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+            } else {
+                const newDecisionRef = db.collection("decisions").doc();
+                transaction.set(newDecisionRef, userDecision);
+            }
+            return true;
+
+        });
+
+        if (success) {
+            if (userDecision.scenario.modelAnswer) {
+                renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+            } else {
+                alert("Decision saved. This scenario has no feedback.");
+                proceedToNextStep();
+            }
+        } else {
+            alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
         }
+    } catch (error) {
+        console.error("Save/Update decision failed: ", error);
+        alert("Could not save decision due to a server error.");
+    } finally {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Decision';
+    }
+}
         
         function proceedToNextStep() {
             if (currentSessionInfo.hubMode) {
