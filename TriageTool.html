@@ -210,6 +210,7 @@
                 const pass = document.getElementById('signup-password').value;
                 errorP.classList.add('hidden');
                 if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
+                console.log(`Preparing to create user. Email: [<span class="math-inline">\{email\}\], Password\: \[</span>{pass}], Name: [${name}]`);
                 try {
                     const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
                     await userCredential.user.updateProfile({ displayName: name });
