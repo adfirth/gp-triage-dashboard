@@ -213,19 +213,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 errorP.classList.add('hidden');
                 auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
             });
-            document.getElementById('signup-btn').addEventListener('click', async () => {
-                const name = document.getElementById('signup-name').value.trim();
-                const email = document.getElementById('signup-email').value;
-                const pass = document.getElementById('signup-password').value;
-                errorP.classList.add('hidden');
-                if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-                    await userCredential.user.updateProfile({ displayName: name });
-                } catch(err) {
-                    errorP.textContent = err.message;
-                    errorP.classList.remove('hidden');
-                }
-            });
+document.getElementById('signup-btn').addEventListener('click', async () => {
+    const name = document.getElementById('signup-name').value.trim();
+    const email = document.getElementById('signup-email').value;
+    const pass = document.getElementById('signup-password').value;
+    errorP.classList.add('hidden');
+    if (!name) {
+        errorP.textContent = "Please enter a display name.";
+        errorP.classList.remove('hidden');
+        return;
+    }
+    // The 'try {' keyword was missing on the next line
+    try {
+        const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+        await userCredential.user.updateProfile({ displayName: name });
+    } catch (err) {
+        errorP.textContent = err.message;
+        errorP.classList.remove('hidden');
+    }
+});
         }
         function renderAccessDenied() {
             const container = document.getElementById('access-denied-view');
