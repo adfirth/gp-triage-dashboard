@@ -44,8 +44,7 @@
                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
                         <div id="standard-nav" class="flex items-center space-x-3">
-                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Prev</button>
-                            <button id="random-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100">Rand</button>
+                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Previous</button>
                             <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
                         </div>
                     </footer>
@@ -70,7 +69,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
 
     <script>
-// STEP 1: INITIALIZE FIREBASE
+        // STEP 1: INITIALIZE FIREBASE
         if (window.firebaseConfig) {
           firebase.initializeApp(window.firebaseConfig);
         }
@@ -83,56 +82,43 @@
         let currentSessionInfo = {};
         let currentScenarioIndex = 0;
         let unsubscribeFromSlots;
+        let unsavedDecisions = {};
         
         const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
 
-        // STEP 3: SET UP THE DOM EVENT LISTENER
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkFirebase = setInterval(() => {
-                if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-                    try {
-                        auth = firebase.auth();
-                        db = firebase.firestore();
-                        clearInterval(checkFirebase);
-                        main();
-                    } catch (e) {
-                        console.error("Error initializing Firebase services:", e);
-                    }
-                }
-            }, 50);
-            
-            // --- MODIFICATION ---
-            // Attach persistent event listeners once the DOM is loaded to prevent duplication
-            document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
-            document.getElementById('prev-btn').addEventListener('click', () => {
-                if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
-            });
-            document.getElementById('next-btn').addEventListener('click', () => {
-                if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
-            });
-            document.getElementById('random-btn').addEventListener('click', () => {
-                if (scenarios.length > 1) {
-                    let newIndex;
-                    do {
-                        newIndex = Math.floor(Math.random() * scenarios.length);
-                    } while (newIndex === currentScenarioIndex);
-                    renderScenario(newIndex);
-                }
-            });
+       // STEP 3: SET UP THE DOM EVENT LISTENER
+document.addEventListener('DOMContentLoaded', () => {
+    const checkFirebase = setInterval(() => {
+        if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+            try {
+                auth = firebase.auth();
+                db = firebase.firestore();
+                clearInterval(checkFirebase);
+                main();
+            } catch (e) {
+                console.error("Error initializing Firebase services:", e);
+            }
+        }
+    }, 50);
 
-// Delegated event listener for dynamically created buttons like 'Continue'
-            document.addEventListener('click', (event) => {
-                // --- DIAGNOSTIC --- Log any click on the page
-                console.log('Document was clicked. The element was:', event.target); 
+    // --- Listeners are attached ONCE here for robustness ---
+    document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+    document.getElementById('prev-btn').addEventListener('click', () => {
+    saveUnsavedState(); // <-- ADD THIS LINE
+    if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+});
+document.getElementById('next-btn').addEventListener('click', () => {
+    saveUnsavedState(); // <-- ADD THIS LINE
+    if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+});
 
-                if (event.target && event.target.id === 'continue-btn') {
-                    // --- DIAGNOSTIC --- Log a successful button match
-                    console.log('Continue button recognized! Trying to proceed...');
-                    proceedToNextStep();
-                }
-            });
-        });
-
+    // Delegated event listener for dynamically created buttons like 'Continue'
+    document.addEventListener('click', (event) => {
+        if (event.target && event.target.id === 'continue-btn') {
+            proceedToNextStep();
+        }
+    });
+});
         // STEP 4: ALL OF YOUR APPLICATION FUNCTIONS
         function main() {
             showView('loading-view');
@@ -161,7 +147,8 @@
                                 role: 'trainee', 
                                 status: 'pending' 
                             });
-                            renderAccessDenied();
+                        showView('access-denied-view');
+                        renderAccessDenied();
                         }
                     } catch (error) {
                         console.error("Auth flow error:", error);
@@ -194,56 +181,64 @@
             if(viewToShow) viewToShow.classList.remove('hidden');
         }
 
-        function renderAuthForm() {
-            const container = document.getElementById('auth-view');
-            container.innerHTML = `
-                <div id="login-form">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Login</h2>
-                    <div class="space-y-4">
-                        <div><label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="login-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="login-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="login-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <p id="auth-error" class="text-red-500 text-sm hidden"></p>
-                        <button id="login-btn" class="w-full btn btn-primary">Login</button>
-                    </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Create one</a></p>
-                </div>
-                <div id="signup-form" class="hidden">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
-                    <p class="text-center text-sm text-gray-500 mb-6">Your account will require approval by a facilitator.</p>
-                    <div class="space-y-4">
-                        <div><label for="signup-name" class="block text-sm font-medium text-gray-700">Display Name</label><input type="text" id="signup-name" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3" placeholder="e.g. Dr Smith"></div>
-                        <div><label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="signup-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="signup-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <button id="signup-btn" class="w-full btn btn-primary">Create Account</button>
-                    </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a></p>
-                </div>`;
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            const errorP = document.getElementById('auth-error');
-            document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
-            document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
-            document.getElementById('login-btn').addEventListener('click', () => {
-                const email = document.getElementById('login-email').value;
-                const pass = document.getElementById('login-password').value;
-                errorP.classList.add('hidden');
-                auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
-            });
-            document.getElementById('signup-btn').addEventListener('click', async () => {
-                const name = document.getElementById('signup-name').value.trim();
-                const email = document.getElementById('signup-email').value;
-                const pass = document.getElementById('signup-password').value;
-                errorP.classList.add('hidden');
-                if (!name) { errorP.textContent = "Please enter a display name."; errorP.classList.remove('hidden'); return; }
-                try {
-                    const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
-                    await userCredential.user.updateProfile({ displayName: name });
-                } catch(err) {
-                    errorP.textContent = err.message;
-                    errorP.classList.remove('hidden');
-                }
-            });
+function renderAuthForm() {
+    const container = document.getElementById('auth-view');
+    container.innerHTML = `
+        <div id="login-form">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Login</h2>
+            <div class="space-y-4">
+                <div><label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="login-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                <div><label for="login-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="login-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                <p id="auth-error" class="text-red-500 text-sm hidden"></p>
+                <button id="login-btn" class="w-full btn btn-primary">Login</button>
+            </div>
+            <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Create one</a></p>
+        </div>
+        <div id="signup-form" class="hidden">
+            <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
+            <p class="text-center text-sm text-gray-500 mb-6">Your account will require approval by a facilitator.</p>
+            <div class="space-y-4">
+                <div><label for="signup-name" class="block text-sm font-medium text-gray-700">Display Name</label><input type="text" id="signup-name" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3" placeholder="e.g. Dr Smith"></div>
+                <div><label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="signup-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                <div><label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="signup-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                <button id="signup-btn" class="w-full btn btn-primary">Create Account</button>
+            </div>
+            <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a></p>
+        </div>`;
+
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    const errorP = document.getElementById('auth-error');
+
+    document.getElementById('show-signup').addEventListener('click', (e) => { e.preventDefault(); loginForm.classList.add('hidden'); signupForm.classList.remove('hidden'); });
+    document.getElementById('show-login').addEventListener('click', (e) => { e.preventDefault(); signupForm.classList.add('hidden'); loginForm.classList.remove('hidden'); });
+
+    document.getElementById('login-btn').addEventListener('click', () => {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-password').value;
+        errorP.classList.add('hidden');
+        auth.signInWithEmailAndPassword(email, pass).catch(err => { errorP.textContent = err.message; errorP.classList.remove('hidden'); });
+    });
+
+    document.getElementById('signup-btn').addEventListener('click', async () => {
+        const name = document.getElementById('signup-name').value.trim();
+        const email = document.getElementById('signup-email').value;
+        const pass = document.getElementById('signup-password').value;
+        errorP.classList.add('hidden');
+        if (!name) {
+            errorP.textContent = "Please enter a display name.";
+            errorP.classList.remove('hidden');
+            return;
         }
+        try {
+            const userCredential = await auth.createUserWithEmailAndPassword(email, pass);
+            await userCredential.user.updateProfile({ displayName: name });
+        } catch (err) {
+            errorP.textContent = err.message;
+            errorP.classList.remove('hidden');
+        }
+    });
+}
         function renderAccessDenied() {
             const container = document.getElementById('access-denied-view');
             container.innerHTML = `<h2 class="text-2xl font-bold text-amber-600">Account Pending Approval</h2><p class="text-gray-600 mt-4">Your account requires approval from a facilitator.</p><button id="denied-logout-btn" class="mt-6 text-sm text-gray-500 hover:underline">Logout</button>`;
@@ -258,42 +253,64 @@
         
         function renderWelcomeScreen() {
             const container = document.getElementById('welcome-screen');
-            container.innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2><p class="text-gray-600 mt-2">Welcome, ${gpName}!</p><div class="mt-6 max-w-sm mx-auto space-y-4"><input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July"><button id="start-btn" class="w-full btn btn-primary">Join Session</button><button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button></div>`;
+            container.innerHTML = `
+                <h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2>
+                <div class="mt-8 max-w-sm mx-auto space-y-4">
+                    <div>
+                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name for this Session</label>
+                        <input type="text" id="user-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" value="${gpName}">
+                    </div>
+                    <div>
+                        <label for="group-name-input" class="block text-sm font-medium text-gray-700 text-left">Group Name</label>
+                        <input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July">
+                    </div>
+                    <button id="start-btn" class="w-full btn btn-primary">Join Session</button>
+                    <button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button>
+                </div>`;
+            
             document.getElementById('logout-btn-welcome').addEventListener('click', () => auth.signOut());
+            
             document.getElementById('start-btn').addEventListener('click', () => {
                 const group = document.getElementById('group-name-input').value.trim();
-                if (group) joinSession(group); else alert('Please enter a Group Name.');
+                const sessionGpName = document.getElementById('user-name-input').value.trim();
+
+                if (!group) { alert('Please enter a Group Name.'); return; }
+                if (!sessionGpName) { alert('Please enter a name for this session.'); return; }
+                
+                gpName = sessionGpName;
+                joinSession(group);
             });
         }
 
-        async function joinSession(group) {
-            try {
-                await loadScenariosFromDB();
-                const sessionDoc = await db.collection('sessions').doc(group).get();
-                if (!sessionDoc.exists) {
-                    alert('This group session has not been set up. Please check the Group Name.');
-                    return;
-                }
-                groupName = group;
-                currentSessionInfo = sessionDoc.data();
-                document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
-                
-                listenToSlots();
-
-                if (currentSessionInfo.hubMode) {
-                    showView('hub-view');
-                    document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
-                    document.getElementById('get-case-btn').addEventListener('click', getNextCase);
-                } else {
-                    showView('triage-view');
-                    document.getElementById('standard-nav').classList.remove('hidden');
-                    renderScenario(0);
-                }
-            } catch (error) {
-                console.error("Error joining session:", error);
-                alert("An error occurred while joining the session.");
-            }
+       // Replace your entire joinSession function with this one.
+async function joinSession(group) {
+    try {
+        await loadScenariosFromDB();
+        const sessionDoc = await db.collection('sessions').doc(group).get();
+        if (!sessionDoc.exists) {
+            alert('This group session has not been set up. Please check the Group Name.');
+            return;
         }
+        groupName = group;
+        currentSessionInfo = sessionDoc.data();
+        document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
+
+        listenToSlots();
+
+        if (currentSessionInfo.hubMode) {
+            showView('hub-view');
+            document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
+            document.getElementById('get-case-btn').addEventListener('click', getNextCase);
+        } else {
+            showView('triage-view');
+            document.getElementById('standard-nav').classList.remove('hidden');
+            (0);
+        }
+    } catch (error) {
+        console.error("Error joining session:", error);
+        alert("An error occurred while joining the session.");
+    }
+}
         
         async function getNextCase() {
             const hubStatus = document.getElementById('hub-status');
@@ -340,7 +357,7 @@
                     if(urgencySlots.length > 0) {
                         slotDisplay.innerHTML += `<div class="pt-2"><h4 class="font-bold text-gray-700">${urgency}</h4></div>`;
                         urgencySlots.forEach(key => {
-                            const type = key.split('|')[1];
+                            const type = key.split('|')[1].replace(/-/g, ' '); // Make it readable again
                             const count = slots[key];
                             let colorClass = 'slot-high';
                             if (count <= 2) colorClass = 'slot-low';
@@ -353,75 +370,84 @@
         }
         
         function renderScenario(index) {
-            currentScenarioIndex = index;
-            const scenario = scenarios[index];
-            if (!scenario) {
-                document.getElementById('scenario-container').innerHTML = `<p class="text-red-500">Error: Could not load scenario data.</p>`;
-                return;
-            }
+    currentScenarioIndex = index;
+    const scenario = scenarios[index];
+    if (!scenario) {
+        document.getElementById('scenario-container').innerHTML = `<p class="text-red-500">Error: Could not load scenario data.</p>`;
+        return;
+    }
 
-            const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="F2F">Face-to-face</option><option value="Tel">Telephone</option><option value="Vid">Video</option><option value="eConsult">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="GP">GP</option><option value="ANP">ANP</option><option value="PN">Practice Nurse</option><option value="HCA">HCA</option><option value="Pharmacist">Pharmacist</option><option value="FCP">FCP</option><option value="Admin">Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
-            
-            const scenarioDetailsHtml = `
-                <div class="space-y-6">
-                    <div class="p-4 bg-indigo-50 rounded-lg">
-                        <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
-                        <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
-                            <p><b>Name:</b> ${scenario.name || 'Not provided'}</p>
-                            <p><b>Age:</b> ${scenario.age || 'Not provided'}</p>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Describe the problem:</h4>
-                            <p class="mt-1 p-3 bg-gray-100 rounded-md">${scenario.problem || 'Not provided'}</p>
-                        </div>
-                        ${scenario.attachments ? `
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Attachment:</h4>
-                            <div class="mt-2">
-                                <a href="${scenario.attachments}" target="_blank">
-                                    <img src="${scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
-                                </a>
-                            </div>
-                        </div>` : ''}
-                        <div>
-                            <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
-                            <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Have you tried anything to help?</h4>
-                            <p class="mt-1">${scenario.selfHelp || 'Not provided'}</p>
-                        </div>
-                    </div>
-                    <div class="border-t pt-4 space-y-4">
-                         <div>
-                            <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
-                            <p class="mt-1 text-red-600 font-medium">${scenario.worried || 'Not provided'}</p>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Expectations:</h4>
-                            <p class="mt-1">${scenario.expectations || 'Not provided'}</p>
-                        </div>
-                    </div>
-                     <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Contact method preference:</h4>
-                            <p class="mt-1">${scenario.contactMethod || 'Not provided'}</p>
-                        </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-800">Preferred clinician:</h4>
-                            <p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p>
-                        </div>
-                    </div>
+    const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+    
+    const scenarioDetailsHtml = `
+        <div class="space-y-6">
+            <div class="p-4 bg-indigo-50 rounded-lg">
+                <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
+                <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+                    <p><b>Name:</b> ${scenario.name || 'Not provided'}</p>
+                    <p><b>Age:</b> ${scenario.age || 'Not provided'}</p>
                 </div>
-            `;
-            
-            document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
-            updateUI();
-        }
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Describe the problem:</h4>
+                    <p class="mt-1 p-3 bg-gray-100 rounded-md">${scenario.problem || 'Not provided'}</p>
+                </div>
+                ${scenario.attachments ? `
+                <div>
+                    <h4 class="font-semibold text-gray-800">Attachment:</h4>
+                    <div class="mt-2">
+                        <a href="${scenario.attachments}" target="_blank">
+                            <img src="${scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
+                        </a>
+                    </div>
+                </div>` : ''}
+                <div>
+                    <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
+                    <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800">Have you tried anything to help?</h4>
+                    <p class="mt-1">${scenario.selfHelp || 'Not provided'}</p>
+                </div>
+            </div>
+            <div class="border-t pt-4 space-y-4">
+                 <div>
+                    <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
+                    <p class="mt-1 text-red-600 font-medium">${scenario.worried || 'Not provided'}</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800">Expectations:</h4>
+                    <p class="mt-1">${scenario.expectations || 'Not provided'}</p>
+                </div>
+            </div>
+             <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <h4 class="font-semibold text-gray-800">Contact method preference:</h4>
+                    <p class="mt-1">${scenario.contactMethod || 'Not provided'}</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800">Preferred clinician:</h4>
+                    <p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
+    updateUI();
+
+    // --- THIS BLOCK IS NOW MOVED TO THE CORRECT LOCATION ---
+    const savedState = unsavedDecisions[scenario.id];
+    if (savedState) {
+        document.getElementById('urgency').value = savedState.urgency;
+        document.getElementById('consultation-type').value = savedState.consultationType;
+        document.getElementById('required-with').value = savedState.requiredWith;
+        document.getElementById('triage-notes').value = savedState.triageNotes;
+    }
+}
         
-function renderFeedbackView(userDecision, modelAnswer) {
+        function renderFeedbackView(userDecision, modelAnswer) {
             const container = document.getElementById('feedback-view');
             let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
 
@@ -432,16 +458,9 @@ function renderFeedbackView(userDecision, modelAnswer) {
             ];
 
             comparisons.forEach(comp => {
-                // --- MODIFICATION START ---
-                // Add robust checks to prevent errors from incomplete data
-                if (!comp.model) return; // Skip if this entire feedback category is missing
-
-                const modelAccepted = comp.model.accepted && Array.isArray(comp.model.accepted) ? comp.model.accepted : [];
-                const modelAnswerText = modelAccepted.length > 0 ? modelAccepted.join(', ') : 'Not specified';
-                const feedbackText = comp.model.feedback || 'No feedback provided.';
-                const isCorrect = modelAccepted.includes(comp.user);
+                if (!comp.model) return;
+                const isCorrect = comp.model.accepted.includes(comp.user);
                 const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
-                // --- MODIFICATION END ---
                 
                 feedbackHtml += `
                     <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
@@ -450,11 +469,11 @@ function renderFeedbackView(userDecision, modelAnswer) {
                            ${resultIcon}
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-sm mt-2">
-                            <div><span class="font-semibold">Your Answer:</span> ${comp.user}</div>
-                            <div><span class="font-semibold">Model Answer:</span> ${modelAnswerText}</div>
+                            <div><span class="font-semibold">Your Answer:</span> ${comp.user.replace(/-/g, ' ')}</div>
+                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ').replace(/-/g, ' ')}</div>
                         </div>
                         <div class="mt-3 pt-3 border-t border-gray-200">
-                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${feedbackText}</p>
+                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
                         </div>
                     </div>
                 `;
@@ -471,100 +490,160 @@ function renderFeedbackView(userDecision, modelAnswer) {
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
 
-        // --- MODIFICATION: REVISED AND ROBUST SAVE FUNCTION ---
-        async function handleSaveDecision() {
-            const saveButton = document.getElementById('save-btn');
-            saveButton.disabled = true; // Prevent double clicks
-            saveButton.textContent = 'Saving...';
+function saveUnsavedState() {
+    const scenario = scenarios[currentScenarioIndex];
+    if (!scenario) return; // Exit if there's no scenario
 
-            const userDecision = {
-                urgency: document.getElementById('urgency').value,
-                consultationType: document.getElementById('consultation-type').value,
-                requiredWith: document.getElementById('required-with').value,
-                triageNotes: document.getElementById('triage-notes').value.trim(),
-                scenario: scenarios[currentScenarioIndex],
-                gpName: gpName,
-                groupName: groupName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
+    // Find the form elements
+    const urgencyEl = document.getElementById('urgency');
+    const consultationTypeEl = document.getElementById('consultation-type');
+    const requiredWithEl = document.getElementById('required-with');
+    const triageNotesEl = document.getElementById('triage-notes');
 
-            const slotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
-            const sessionRef = db.collection('sessions').doc(groupName);
+    // Only save if the form actually exists on the page
+    if (urgencyEl && consultationTypeEl && requiredWithEl && triageNotesEl) {
+        unsavedDecisions[scenario.id] = {
+            urgency: urgencyEl.value,
+            consultationType: consultationTypeEl.value,
+            requiredWith: requiredWithEl.value,
+            triageNotes: triageNotesEl.value
+        };
+    }
+}
+        
+async function handleSaveDecision() {
+    const saveButton = document.getElementById('save-btn');
+    const currentScenario = scenarios[currentScenarioIndex];
 
-            try {
-                const success = await db.runTransaction(async (transaction) => {
-                    const doc = await transaction.get(sessionRef);
-                    if (!doc.exists) {
-                        throw "Session document does not exist!";
-                    }
+    // 1. --- Initial Checks and UI State ---
+    // Make sure we have a scenario to work with
+    if (!currentScenario) {
+        alert("Error: Cannot find current scenario data. Please try again.");
+        return;
+    }
 
-                    const sessionData = doc.data();
-                    const currentSlots = sessionData.slots;
+    // Disable the button to prevent multiple clicks while saving
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving...';
 
-                    // Check if there's a slot available (unless in hub mode)
-                    if (currentSessionInfo.hubMode || (currentSlots[slotKey] !== undefined && currentSlots[slotKey] > 0)) {
-                        const updates = {};
+    // 2. --- Gather User's Choices ---
+    // Create an object holding all the data for this decision
+    const userDecision = {
+        urgency: document.getElementById('urgency').value,
+        consultationType: document.getElementById('consultation-type').value,
+        requiredWith: document.getElementById('required-with').value,
+        triageNotes: document.getElementById('triage-notes').value.trim(),
+        scenario: currentScenario,
+        scenarioId: currentScenario.id,
+        gpName: gpName,
+        groupName: groupName,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
 
-                        // Decrement slot count if not in hub mode
-                        if (!currentSessionInfo.hubMode) {
-                            updates[`slots.${slotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                        }
+    const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
+    const sessionRef = db.collection('sessions').doc(groupName);
 
-                        // Update scenario status if in hub mode
-                        if (currentSessionInfo.hubMode) {
-                            const scenarioId = userDecision.scenario.id;
-                            updates[`scenarioStatus.${scenarioId}`] = {
-                                status: 'completed',
-                                completedBy: gpName,
-                                completedAt: userDecision.timestamp
-                            };
-                        }
+    // 3. --- Main Logic with Error Handling ---
+    try {
+        // First, check if this user has already made a decision on this case
+        const querySnapshot = await db.collection("decisions")
+            .where("groupName", "==", groupName)
+            .where("gpName", "==", gpName)
+            .where("scenarioId", "==", currentScenario.id)
+            .limit(1)
+            .get();
 
-                        transaction.update(sessionRef, updates);
-                        return true; // Transaction will commit and return true
-                    } else {
-                        return false; // Transaction will abort and return false
-                    }
-                });
+        const existingDecisionDoc = querySnapshot.docs[0];
+        const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+        
+        // Use a Firestore Transaction to ensure slot counts are updated safely (atomically)
+        const success = await db.runTransaction(async (transaction) => {
+            const sessionDoc = await transaction.get(sessionRef);
+            if (!sessionDoc.exists) throw "Session document does not exist!";
+            
+            const sessionData = sessionDoc.data();
+            const currentSlots = sessionData.slots;
+            const updates = {};
+            
+            const isRevising = !!existingDecisionDoc;
+            const isSwapping = isRevising && oldSlotKey !== newSlotKey;
+            const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-                if (success) {
-                    await db.collection("decisions").add(userDecision);
-
-                    if (userDecision.scenario.modelAnswer) {
-                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-                    } else {
-                        alert("Decision saved. This scenario has no feedback.");
-                        proceedToNextStep();
-                    }
-                } else {
-                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType}" slots are now full.`);
+            // Block the action if trying to take a slot that has none left
+            if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
+                return false; // Abort the transaction
+            }
+            
+            // Handle slot adjustments for standard (non-hub) mode
+            if (!currentSessionInfo.hubMode) {
+                // If the user is changing their decision, give back the old slot
+                if (isSwapping) {
+                    updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                 }
-            } catch (error) {
-                console.error("Transaction failed: ", error);
-                alert("Could not save decision due to a server error.");
-            } finally {
-                saveButton.disabled = false; // Re-enable button
-                saveButton.textContent = 'Save Decision';
+                // If it's a brand new decision OR a swap, take the new slot
+                if (!isRevising || isSwapping) {
+                    updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+                }
             }
+
+            // Handle scenario status for hub mode
+            if (currentSessionInfo.hubMode) {
+                updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+            }
+            
+            // Apply any updates to the session document
+            if (Object.keys(updates).length > 0) {
+                transaction.update(sessionRef, updates);
+            }
+
+            // Update the existing decision or create a new one
+            if (existingDecisionDoc) {
+                transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+            } else {
+                const newDecisionRef = db.collection("decisions").doc();
+                transaction.set(newDecisionRef, userDecision);
+            }
+            
+            return true; // Indicate that the transaction was successful
+        });
+
+        // 4. --- Post-Transaction UI Update ---
+        if (success) {
+            delete unsavedDecisions[userDecision.scenarioId];
+            // If the transaction succeeded, show the feedback screen or move on
+            if (userDecision.scenario.modelAnswer) {
+                renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+            } else {
+                alert("Decision saved. This scenario has no feedback.");
+                proceedToNextStep();
+            }
+        } else {
+            // If the transaction returned false, it means no slots were available
+            alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
         }
 
-        // --- MODIFICATION: NEW HELPER FUNCTION TO AVOID REPEATING CODE ---
+    } catch (error) {
+        // This CATCH block handles any errors during the database operations
+        console.error("Save/Update decision failed: ", error);
+        alert("Could not save decision due to a server error.");
+    } finally {
+        // This FINALLY block runs no matter what, ensuring the user isn't left with a disabled button
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Decision';
+    }
+}
+        
         function proceedToNextStep() {
-            if (currentSessionInfo.hubMode) {
-                // Action: return to the hub to get the next case
-                showView('hub-view');
-                document.getElementById('hub-status').textContent = 'Click to get the next available case.';
-            } else if (currentScenarioIndex < scenarios.length - 1) {
-                // Action: show the triage view AND render the next scenario
-                showView('triage-view'); // <-- THIS IS THE FIX
-                renderScenario(++currentScenarioIndex);
-            } else {
-                // Action: session is complete
-                showView('welcome-screen');
-                document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p><button id="logout-btn-final" class="mt-4 text-sm underline">Logout</button>`;
-                document.getElementById('logout-btn-final').addEventListener('click', () => auth.signOut());
-            }
-        }
+    if (currentSessionInfo.hubMode) {
+        showView('hub-view');
+    } else if (currentScenarioIndex < scenarios.length - 1) {
+        showView('triage-view');
+        renderScenario(++currentScenarioIndex);
+    } else {
+        showView('welcome-screen');
+        document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
+    }
+}
     </script>
 </body>
 </html>
