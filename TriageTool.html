@@ -136,7 +136,8 @@
                                 role: 'trainee', 
                                 status: 'pending' 
                             });
-                            renderAccessDenied();
+                        showView('access-denied-view');
+                        renderAccessDenied();
                         }
                     } catch (error) {
                         console.error("Auth flow error:", error);
