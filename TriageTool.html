@@ -608,19 +608,19 @@ async function handleSaveDecision() {
         });
 
         // 4. --- Post-Transaction UI Update ---
-        if (success) {
-            delete unsavedDecisions[userDecision.scenarioId];
-            // If the transaction succeeded, show the feedback screen or move on
-            if (userDecision.scenario.modelAnswer) {
-                renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-            } else {
-                alert("Decision saved. This scenario has no feedback.");
-                proceedToNextStep();
-            }
-        } else {
-            // If the transaction returned false, it means no slots were available
-            alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
-        }
+       if (success) {
+    delete unsavedDecisions[userDecision.scenarioId];
+
+    // NEW: Check the session mode before deciding to show feedback
+    if (currentSessionInfo.sessionMode === 'training' && userDecision.scenario.modelAnswer) {
+        // Only show detailed feedback in 'training' mode if a model answer exists
+        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+    } else {
+        // In 'simulation' mode, or if there's no model answer, just give a simple confirmation
+        alert("Decision Saved.");
+        proceedToNextStep();
+    }
+}
 
     } catch (error) {
         // This CATCH block handles any errors during the database operations
