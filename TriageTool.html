@@ -568,7 +568,6 @@
                         return false;
                     }
                     
-                    if (!currentSessionInfo.hubMode) {
                         if (isSwapping) {
                             updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                         }
