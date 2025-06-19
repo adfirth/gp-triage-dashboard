@@ -608,7 +608,8 @@ async function handleSaveDecision() {
         });
 
         // 4. --- Post-Transaction UI Update ---
-       if (success) {
+       console.log("Checking session info object:", currentSessionInfo);
+        if (success) {
     delete unsavedDecisions[userDecision.scenarioId];
 
     // NEW: Check the session mode before deciding to show feedback
