@@ -343,32 +343,44 @@ if (currentSessionInfo.sessionMode === 'training') {
 }
         
         async function getNextCase() {
-            const hubStatus = document.getElementById('hub-status');
-            hubStatus.textContent = 'Finding next available case...';
-            const sessionRef = db.collection('sessions').doc(groupName);
-            try {
-                const nextCaseId = await db.runTransaction(async (transaction) => {
-                    const sessionDoc = await transaction.get(sessionRef);
-                    if (!sessionDoc.exists) throw new Error("Session not found");
-                    const status = sessionDoc.data().scenarioStatus;
-                    const unlockedId = scenarios.map(s => s.id).find(id => status[id] && status[id].status === 'unlocked');
-                    if (unlockedId) {
-                        const newStatus = { ...status };
-                        newStatus[unlockedId] = { status: 'locked', lockedBy: gpName, lockedAt: firebase.firestore.FieldValue.serverTimestamp() };
-                        transaction.update(sessionRef, { scenarioStatus: newStatus });
-                        return unlockedId;
-                    } else { return null; }
-                });
+    const hubStatus = document.getElementById('hub-status');
+    hubStatus.textContent = 'Finding next available case...';
+    const sessionRef = db.collection('sessions').doc(groupName);
 
-                if (nextCaseId) {
-    const scenarioIndex = scenarios.findIndex(s => s.id === nextCaseId);
-    showView('triage-view');
+    try {
+        const nextCaseId = await db.runTransaction(async (transaction) => {
+            const sessionDoc = await transaction.get(sessionRef);
+            if (!sessionDoc.exists) throw new Error("Session not found");
+            const status = sessionDoc.data().scenarioStatus;
+            const unlockedId = scenarios.map(s => s.id).find(id => status[id] && status[id].status === 'unlocked');
+            if (unlockedId) {
+                const newStatus = { ...status };
+                newStatus[unlockedId] = { status: 'locked', lockedBy: gpName, lockedAt: firebase.firestore.FieldValue.serverTimestamp() };
+                transaction.update(sessionRef, { scenarioStatus: newStatus });
+                return unlockedId;
+            } else {
+                return null;
+            }
+        });
 
-    // --- FIX: Show the nav bar, but hide the Prev/Next buttons ---
-    document.getElementById('standard-nav').classList.remove('hidden');
-    document.getElementById('prev-btn').classList.add('hidden');
-    document.getElementById('next-btn').classList.add('hidden');
-    // --- END OF FIX ---
+        if (nextCaseId) {
+            const scenarioIndex = scenarios.findIndex(s => s.id === nextCaseId);
+            showView('triage-view');
+
+            // Show the nav bar, but hide the Prev/Next buttons for Hub Mode
+            document.getElementById('standard-nav').classList.remove('hidden');
+            document.getElementById('prev-btn').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+
+            renderScenario(scenarioIndex);
+        } else {
+            hubStatus.textContent = 'All cases have been completed!';
+        }
+    } catch (error) {
+        hubStatus.textContent = 'Could not get case. Please try again.';
+        console.error("Error in getNextCase:", error);
+    }
+}
 
     renderScenario(scenarioIndex);
 }
