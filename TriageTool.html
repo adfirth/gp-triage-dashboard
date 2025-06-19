@@ -662,6 +662,31 @@ async function handleSaveDecision() {
         }
     }
 }
+        
+        function proceedToNextStep() {
+    if (currentSessionInfo.hubMode) {
+        showView('hub-view');
+        // Reset the Get Case button in case the user wants to see the list again
+        const hubStatus = document.getElementById('hub-status');
+        if(hubStatus) hubStatus.textContent = 'Click to get the next available case.';
+
+    } else if (currentScenarioIndex < scenarios.length - 1) {
+        showView('triage-view');
+        renderScenario(++currentScenarioIndex);
+    } else {
+        showView('welcome-screen');
+        document.getElementById('welcome-screen').innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2>
+            <p class="mt-2">You have completed all scenarios in this session.</p>
+            <button id="logout-btn-complete" class="mt-6 btn bg-gray-200 hover:bg-gray-300">Logout</button>
+        `;
+        // Add a listener for the new logout button
+        const logoutBtn = document.getElementById('logout-btn-complete');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => auth.signOut());
+        }
+    }
+}
     </script>
 </body>
 </html>
