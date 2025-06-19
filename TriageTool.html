@@ -373,30 +373,40 @@
         }
         
         function listenToSlots() {
-            if (unsubscribeFromSlots) unsubscribeFromSlots();
-            const sessionRef = db.collection('sessions').doc(groupName);
-            unsubscribeFromSlots = sessionRef.onSnapshot(doc => {
-                if (!doc.exists) { document.getElementById('slot-display').innerHTML = `<p class="text-red-500">Session ended.</p>`; return; }
-                const slots = doc.data().slots;
-                const slotDisplay = document.getElementById('slot-display');
-                slotDisplay.innerHTML = '';
-                const order = ['Red', 'Amber', 'Green'];
-                order.forEach(urgency => {
-                    const urgencySlots = Object.keys(slots).filter(key => key.startsWith(urgency)).sort();
-                    if(urgencySlots.length > 0) {
-                        slotDisplay.innerHTML += `<div class="pt-2"><h4 class="font-bold text-gray-700">${urgency}</h4></div>`;
-                        urgencySlots.forEach(key => {
-                            const type = key.split('|')[1].replace(/-/g, ' ');
-                            const count = slots[key];
-                            let colorClass = 'slot-high';
-                            if (count <= 2) colorClass = 'slot-low';
-                            else if (count <= 5) colorClass = 'slot-medium';
-                            slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold <span class="math-inline">\{colorClass\}"\></span>{count}</span></div>`;
-                        });
-                    }
-                });
-            });
+    if (unsubscribeFromSlots) unsubscribeFromSlots();
+    
+    const sessionRef = db.collection('sessions').doc(groupName);
+    unsubscribeFromSlots = sessionRef.onSnapshot(doc => {
+        if (!doc.exists) {
+            document.getElementById('slot-display').innerHTML = `<p class="text-red-500">Session ended.</p>`;
+            return;
         }
+        
+        const slots = doc.data().slots;
+        const slotDisplay = document.getElementById('slot-display');
+        slotDisplay.innerHTML = '';
+        const order = ['Red', 'Amber', 'Green'];
+
+        order.forEach(urgency => {
+            const urgencySlots = Object.keys(slots).filter(key => key.startsWith(urgency)).sort();
+            
+            if (urgencySlots.length > 0) {
+                slotDisplay.innerHTML += `<div class="pt-2"><h4 class="font-bold text-gray-700">${urgency}</h4></div>`;
+                
+                urgencySlots.forEach(key => {
+                    const type = key.split('|')[1].replace(/-/g, ' ');
+                    const count = slots[key];
+                    let colorClass = 'slot-high';
+                    if (count <= 2) colorClass = 'slot-low';
+                    else if (count <= 5) colorClass = 'slot-medium';
+                    
+                    // This line now correctly uses backticks
+                    slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold ${colorClass}">${count}</span></div>`;
+                });
+            }
+        });
+    });
+}
         
         function renderScenario(index) {
     currentScenarioIndex = index;
