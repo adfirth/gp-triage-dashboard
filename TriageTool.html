@@ -454,7 +454,6 @@ function renderScenario(index) {
             <div class="border-t pt-4 space-y-4">
                  <div>
                     <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
-                    // --- THIS IS THE FIX: The classes on this <p> tag are removed ---
                     <p class="mt-1">${scenario.worried || 'Not provided'}</p>
                 </div>
                 <div>
@@ -515,6 +514,7 @@ function renderScenario(index) {
 
     updateUI();
 }
+        
 async function handleSaveDecision() {
     const saveButton = document.getElementById('save-btn');
     const currentScenario = scenarios[currentScenarioIndex];
