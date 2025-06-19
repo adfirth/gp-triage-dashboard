@@ -493,7 +493,16 @@
         }
         
        function renderSessionSetup(groupName) {
-            appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-6 border-t border-gray-200 pt-6">
+            appView.innerHTML = `<div id="session-setup-view" class="card p-8"><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
+    
+<div class="mt-4">
+    <label class="flex items-center">
+        <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+        <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
+    </label>
+</div>
+
+<div class="mt-6 border-t border-gray-200 pt-6">
     <fieldset>
         <legend class="text-base font-medium text-gray-900">Session Mode</legend>
         <p class="text-sm text-gray-500">Choose when trainees receive feedback on their decisions.</p>
@@ -512,7 +521,8 @@
             </div>
         </div>
     </fieldset>
-</div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
+</div>
+<div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div>
             const slotInputsContainer = document.getElementById('slot-inputs');
             const urgencies = ['Red', 'Amber', 'Green'];
             const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult / Message'];
