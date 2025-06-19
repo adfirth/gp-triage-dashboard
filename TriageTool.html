@@ -39,23 +39,23 @@
         
         <div id="triage-view" class="hidden">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div class="lg:col-span-2 space-y-6">
+                <div id="main-content-area" class="lg:col-span-2 space-y-6">
                     <main id="scenario-container" class="card p-6 sm:p-8"></main>
                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
                         <div id="standard-nav" class="flex items-center space-x-3">
-                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Previous</button>
-                            <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
-                        </div>
+    <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Previous</button>
+
+    <button id="save-btn" class="btn btn-primary">Save Decision</button>
+
+    <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
+</div>
                     </footer>
                 </div>
                 <aside id="slot-counter-view" class="card p-6">
                     <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">Slots Remaining</h3>
                     <div id="slot-display" class="space-y-3 text-sm"><p class="text-gray-500">Joining session...</p></div>
                 </aside>
-            </div>
-             <div class="mt-8 flex items-center justify-center">
-                <button id="save-btn" class="btn btn-primary text-lg">Save Decision</button>
             </div>
         </div>
 
@@ -83,10 +83,11 @@
         let currentScenarioIndex = 0;
         let unsubscribeFromSlots;
         let unsavedDecisions = {};
+        let userDecisions = new Map();
         
         const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
 
-       // STEP 3: SET UP THE DOM EVENT LISTENER
+// STEP 3: SET UP THE DOM EVENT LISTENER
 document.addEventListener('DOMContentLoaded', () => {
     const checkFirebase = setInterval(() => {
         if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
@@ -102,15 +103,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 50);
 
     // --- Listeners are attached ONCE here for robustness ---
-    document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+    document.getElementById('save-btn').addEventListener('click', handleSaveDecision); // This is the line that was likely missing
     document.getElementById('prev-btn').addEventListener('click', () => {
-    saveUnsavedState(); // <-- ADD THIS LINE
-    if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
-});
-document.getElementById('next-btn').addEventListener('click', () => {
-    saveUnsavedState(); // <-- ADD THIS LINE
-    if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
-});
+        saveUnsavedState();
+        if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+    });
+    document.getElementById('next-btn').addEventListener('click', () => {
+        saveUnsavedState();
+        if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+    });
 
     // Delegated event listener for dynamically created buttons like 'Continue'
     document.addEventListener('click', (event) => {
@@ -293,9 +294,38 @@ async function joinSession(group) {
         }
         groupName = group;
         currentSessionInfo = sessionDoc.data();
+        // --- START OF NEW BLOCK ---
+// After getting session info, find all decisions this user has already made for this group
+userDecisions.clear(); // Clear any decisions from previous sessions
+const decisionsSnapshot = await db.collection("decisions")
+    .where("groupName", "==", groupName)
+    .where("gpName", "==", gpName)
+    .get();
+
+decisionsSnapshot.forEach(doc => {
+    const decision = doc.data();
+    userDecisions.set(decision.scenarioId, decision);
+});
+// --- END OF NEW BLOCK ---
         document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
 
         listenToSlots();
+        // --- START OF NEW BLOCK ---
+// Adjust the layout based on the session mode
+if (currentSessionInfo.sessionMode === 'training') {
+    // In Training Mode, hide slots and make the main view wider
+    document.getElementById('slot-counter-view').style.display = 'none';
+    const mainContent = document.getElementById('main-content-area');
+    mainContent.classList.remove('lg:col-span-2');
+    mainContent.classList.add('lg:col-span-3');
+} else {
+    // In Simulation Mode, make sure the slots are visible and the layout is correct
+    document.getElementById('slot-counter-view').style.display = 'block';
+    const mainContent = document.getElementById('main-content-area');
+    mainContent.classList.remove('lg:col-span-3');
+    mainContent.classList.add('lg:col-span-2');
+}
+// --- END OF NEW BLOCK ---
 
         if (currentSessionInfo.hubMode) {
             showView('hub-view');
@@ -369,7 +399,7 @@ async function joinSession(group) {
             });
         }
         
-        function renderScenario(index) {
+function renderScenario(index) {
     currentScenarioIndex = index;
     const scenario = scenarios[index];
     if (!scenario) {
@@ -377,8 +407,9 @@ async function joinSession(group) {
         return;
     }
 
-    const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
-    
+    const saveButton = document.getElementById('save-btn');
+
+    // This is the HTML block for the main scenario details, used in both locked and unlocked views
     const scenarioDetailsHtml = `
         <div class="space-y-6">
             <div class="p-4 bg-indigo-50 rounded-lg">
@@ -433,62 +464,125 @@ async function joinSession(group) {
             </div>
         </div>
     `;
-    
-    document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
-    updateUI();
 
-    // --- THIS BLOCK IS NOW MOVED TO THE CORRECT LOCATION ---
-    const savedState = unsavedDecisions[scenario.id];
-    if (savedState) {
-        document.getElementById('urgency').value = savedState.urgency;
-        document.getElementById('consultation-type').value = savedState.consultationType;
-        document.getElementById('required-with').value = savedState.requiredWith;
-        document.getElementById('triage-notes').value = savedState.triageNotes;
+    if (userDecisions.has(scenario.id)) {
+        // --- If YES, render a READ-ONLY "LOCKED" VIEW ---
+        const lockedDecision = userDecisions.get(scenario.id);
+        
+        const lockedTriageOptionsHtml = `
+            <div class="mt-6 pt-6 border-t border-gray-200 space-y-4">
+                <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <h2 class="text-xl font-bold text-yellow-800">Decision Locked</h2>
+                    <p class="text-sm text-yellow-700">You have already saved a decision for this case.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div><label class="block text-sm font-medium text-gray-700">Urgency</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.urgency}" readonly></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Consultation type</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.consultationType.replace(/-/g, ' ')}" readonly></div>
+                    <div><label class="block text-sm font-medium text-gray-700">Required with</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.requiredWith}" readonly></div>
+                </div>
+                <div><label class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2 bg-gray-100" readonly>${lockedDecision.triageNotes}</textarea></div></div>
+            </div>`;
+        
+        document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + lockedTriageOptionsHtml;
+        saveButton.classList.add('hidden');
+
+    } else {
+        // --- If NO, render the NORMAL, EDITABLE VIEW ---
+        
+        // Reset the button to its default state
+        saveButton.classList.remove('hidden');
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Decision';
+        saveButton.classList.remove('save-btn-feedback');
+        
+        const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div><div><label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label><select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option>GP</option><option>ANP</option><option>Practice Nurse</option><option>HCA</option><option>Pharmacist</option><option>FCP</option><option>Admin</option></select></div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+        
+        document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
+
+        // Populate with any unsaved data from navigating back and forth
+        const savedState = unsavedDecisions[scenario.id];
+        if (savedState) {
+            document.getElementById('urgency').value = savedState.urgency;
+            document.getElementById('consultation-type').value = savedState.consultationType;
+            document.getElementById('required-with').value = savedState.requiredWith;
+            document.getElementById('triage-notes').value = savedState.triageNotes;
+        }
+    }
+
+    updateUI();
+}
+
+        function renderFeedbackView(userDecision, modelAnswer) {
+    const container = document.getElementById('feedback-view');
+    let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
+
+    const comparisons = [
+        { title: 'Urgency', user: userDecision.urgency, model: modelAnswer.urgency },
+        { title: 'Consultation Type', user: userDecision.consultationType, model: modelAnswer.consultationType },
+        { title: 'Required With', user: userDecision.requiredWith, model: modelAnswer.requiredWith }
+    ];
+
+    comparisons.forEach(comp => {
+        if (!comp.model) return;
+        const isCorrect = comp.model.accepted.includes(comp.user);
+        const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
+        
+        feedbackHtml += `
+            <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
+                <div class="flex justify-between items-center">
+                    <h3 class="font-bold text-lg text-gray-900">${comp.title}</h3>
+                    ${resultIcon}
+                </div>
+                <div class="grid grid-cols-2 gap-4 text-sm mt-2">
+                    <div><span class="font-semibold">Your Answer:</span> ${comp.user.replace(/-/g, ' ')}</div>
+                    <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ').replace(/-/g, ' ')}</div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-gray-200">
+                    <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
+                </div>
+            </div>
+        `;
+    });
+
+    feedbackHtml += `</div><div class="mt-8 text-center"><button id="continue-btn" class="btn btn-primary">Continue</button></div>`;
+    container.innerHTML = feedbackHtml;
+    showView('feedback-view');
+}
+
+function updateUI() {
+    document.getElementById('scenario-counter').textContent = `Scenario ${currentScenarioIndex + 1} of ${scenarios.length}`;
+    document.getElementById('prev-btn').disabled = currentScenarioIndex === 0;
+    document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
+}
+
+function proceedToNextStep() {
+    if (currentSessionInfo.hubMode) {
+        showView('hub-view');
+        const hubStatus = document.getElementById('hub-status');
+        if(hubStatus) hubStatus.textContent = 'Click to get the next available case.';
+
+    } else if (currentScenarioIndex < scenarios.length - 1) {
+        showView('triage-view');
+        renderScenario(++currentScenarioIndex);
+    } else {
+        showView('welcome-screen');
+        document.getElementById('welcome-screen').innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2>
+            <p class="mt-2">You have completed all scenarios in this session.</p>
+            <button id="logout-btn-complete" class="mt-6 btn bg-gray-200 hover:bg-gray-300">Logout</button>
+        `;
+        const logoutBtn = document.getElementById('logout-btn-complete');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => auth.signOut());
+        }
     }
 }
-        
-        function renderFeedbackView(userDecision, modelAnswer) {
-            const container = document.getElementById('feedback-view');
-            let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
 
-            const comparisons = [
-                { title: 'Urgency', user: userDecision.urgency, model: modelAnswer.urgency },
-                { title: 'Consultation Type', user: userDecision.consultationType, model: modelAnswer.consultationType },
-                { title: 'Required With', user: userDecision.requiredWith, model: modelAnswer.requiredWith }
-            ];
-
-            comparisons.forEach(comp => {
-                if (!comp.model) return;
-                const isCorrect = comp.model.accepted.includes(comp.user);
-                const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
-                
-                feedbackHtml += `
-                    <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
-                        <div class="flex justify-between items-center">
-                           <h3 class="font-bold text-lg text-gray-900">${comp.title}</h3>
-                           ${resultIcon}
-                        </div>
-                        <div class="grid grid-cols-2 gap-4 text-sm mt-2">
-                            <div><span class="font-semibold">Your Answer:</span> ${comp.user.replace(/-/g, ' ')}</div>
-                            <div><span class="font-semibold">Model Answer:</span> ${comp.model.accepted.join(', ').replace(/-/g, ' ')}</div>
-                        </div>
-                        <div class="mt-3 pt-3 border-t border-gray-200">
-                            <p class="text-sm text-gray-700"><b class="text-gray-900">Feedback:</b> ${comp.model.feedback || 'No feedback provided.'}</p>
-                        </div>
-                    </div>
-                `;
-            });
-
-            feedbackHtml += `</div><div class="mt-8 text-center"><button id="continue-btn" class="btn btn-primary">Continue</button></div>`;
-            container.innerHTML = feedbackHtml;
-            showView('feedback-view');
-        }
-        
-        function updateUI() {
-            document.getElementById('scenario-counter').textContent = `Scenario ${currentScenarioIndex + 1} of ${scenarios.length}`;
-            document.getElementById('prev-btn').disabled = currentScenarioIndex === 0;
-            document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
-        }
+function updateUI() {
+    document.getElementById('scenario-counter').textContent = `Scenario ${currentScenarioIndex + 1} of ${scenarios.length}`;
+    document.getElementById('prev-btn').disabled = currentScenarioIndex === 0;
+    document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
+}
 
 function saveUnsavedState() {
     const scenario = scenarios[currentScenarioIndex];
@@ -515,19 +609,14 @@ async function handleSaveDecision() {
     const saveButton = document.getElementById('save-btn');
     const currentScenario = scenarios[currentScenarioIndex];
 
-    // 1. --- Initial Checks and UI State ---
-    // Make sure we have a scenario to work with
     if (!currentScenario) {
         alert("Error: Cannot find current scenario data. Please try again.");
         return;
     }
 
-    // Disable the button to prevent multiple clicks while saving
     saveButton.disabled = true;
     saveButton.textContent = 'Saving...';
-
-    // 2. --- Gather User's Choices ---
-    // Create an object holding all the data for this decision
+    
     const userDecision = {
         urgency: document.getElementById('urgency').value,
         consultationType: document.getElementById('consultation-type').value,
@@ -543,9 +632,7 @@ async function handleSaveDecision() {
     const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
     const sessionRef = db.collection('sessions').doc(groupName);
 
-    // 3. --- Main Logic with Error Handling ---
     try {
-        // First, check if this user has already made a decision on this case
         const querySnapshot = await db.collection("decisions")
             .where("groupName", "==", groupName)
             .where("gpName", "==", gpName)
@@ -556,7 +643,6 @@ async function handleSaveDecision() {
         const existingDecisionDoc = querySnapshot.docs[0];
         const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
         
-        // Use a Firestore Transaction to ensure slot counts are updated safely (atomically)
         const success = await db.runTransaction(async (transaction) => {
             const sessionDoc = await transaction.get(sessionRef);
             if (!sessionDoc.exists) throw "Session document does not exist!";
@@ -569,34 +655,27 @@ async function handleSaveDecision() {
             const isSwapping = isRevising && oldSlotKey !== newSlotKey;
             const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-            // Block the action if trying to take a slot that has none left
             if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
-                return false; // Abort the transaction
+                return false;
             }
             
-            // Handle slot adjustments for standard (non-hub) mode
             if (!currentSessionInfo.hubMode) {
-                // If the user is changing their decision, give back the old slot
                 if (isSwapping) {
                     updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                 }
-                // If it's a brand new decision OR a swap, take the new slot
                 if (!isRevising || isSwapping) {
                     updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
                 }
             }
 
-            // Handle scenario status for hub mode
             if (currentSessionInfo.hubMode) {
                 updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
             }
             
-            // Apply any updates to the session document
             if (Object.keys(updates).length > 0) {
                 transaction.update(sessionRef, updates);
             }
 
-            // Update the existing decision or create a new one
             if (existingDecisionDoc) {
                 transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
             } else {
@@ -604,44 +683,59 @@ async function handleSaveDecision() {
                 transaction.set(newDecisionRef, userDecision);
             }
             
-            return true; // Indicate that the transaction was successful
+            return true;
         });
 
-        // 4. --- Post-Transaction UI Update ---
-       if (success) {
-    delete unsavedDecisions[userDecision.scenarioId];
+        if (success) {
+            delete unsavedDecisions[userDecision.scenarioId];
+            userDecisions.set(userDecision.scenarioId, userDecision);
 
-    // NEW: Check the session mode before deciding to show feedback
-    if (currentSessionInfo.sessionMode === 'training' && userDecision.scenario.modelAnswer) {
-        // Only show detailed feedback in 'training' mode if a model answer exists
-        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-    } else {
-        // In 'simulation' mode, or if there's no model answer, just give a simple confirmation
-        alert("Decision Saved.");
-        proceedToNextStep();
-    }
-}
-
+            if (currentSessionInfo.sessionMode === 'training' && userDecision.scenario.modelAnswer) {
+                renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+            } else {
+                saveButton.textContent = 'Saved ✓';
+                saveButton.classList.add('save-btn-feedback');
+                setTimeout(() => {
+                    proceedToNextStep();
+                }, 1000);
+            }
+        } else {
+            alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
+        }
     } catch (error) {
-        // This CATCH block handles any errors during the database operations
         console.error("Save/Update decision failed: ", error);
         alert("Could not save decision due to a server error.");
     } finally {
-        // This FINALLY block runs no matter what, ensuring the user isn't left with a disabled button
-        saveButton.disabled = false;
-        saveButton.textContent = 'Save Decision';
+        // We only want to re-enable the button if we aren't already showing the success state
+        if (!saveButton.classList.contains('save-btn-feedback')) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Decision';
+        }
     }
 }
         
         function proceedToNextStep() {
     if (currentSessionInfo.hubMode) {
         showView('hub-view');
+        // Reset the Get Case button in case the user wants to see the list again
+        const hubStatus = document.getElementById('hub-status');
+        if(hubStatus) hubStatus.textContent = 'Click to get the next available case.';
+
     } else if (currentScenarioIndex < scenarios.length - 1) {
         showView('triage-view');
         renderScenario(++currentScenarioIndex);
     } else {
         showView('welcome-screen');
-        document.getElementById('welcome-screen').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2><p class="mt-2">You have completed all scenarios in this session.</p>`;
+        document.getElementById('welcome-screen').innerHTML = `
+            <h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2>
+            <p class="mt-2">You have completed all scenarios in this session.</p>
+            <button id="logout-btn-complete" class="mt-6 btn bg-gray-200 hover:bg-gray-300">Logout</button>
+        `;
+        // Add a listener for the new logout button
+        const logoutBtn = document.getElementById('logout-btn-complete');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => auth.signOut());
+        }
     }
 }
     </script>

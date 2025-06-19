@@ -493,39 +493,89 @@
         }
         
        function renderSessionSetup(groupName) {
-            appView.innerHTML = `<div id="session-setup-view" class="card p-8"><h2 class="text-2xl font-bold text-gray-800">Set Initial Appointment Slots</h2><p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p><div class="mt-4"><label class="flex items-center"><input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"><span class="ml-2 text-gray-700">Enable Triage Hub Mode</span></label></div><div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div><div class="mt-8 flex justify-end gap-4"><button id="back-to-group-selection-btn" class="btn bg-gray-200">Back</button><button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button></div></div>`;
-            const slotInputsContainer = document.getElementById('slot-inputs');
-            const urgencies = ['Red', 'Amber', 'Green'];
-            const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult / Message'];
+    // This function now correctly includes the action buttons inside the HTML string
+    appView.innerHTML = `
+        <div id="session-setup-view" class="card p-8">
+            <h2 class="text-2xl font-bold text-gray-800">Set Up New Session</h2>
+            <p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
             
-            urgencies.forEach(urgency => types.forEach(type => {
-                const safeTypeId = type.replace(/[\s/]+/g, '-'); // Replaces spaces AND slashes for the HTML element ID
-                const id = `slot-${urgency}-${safeTypeId}`;
-                const defaultVal = (urgency === 'Green') ? 10 : (urgency === 'Amber' ? 5 : 2);
-                slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
-            }));
+            <div class="mt-4">
+                <label class="flex items-center">
+                    <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                    <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
+                </label>
+            </div>
 
-            document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupSelection);
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <fieldset>
+                    <legend class="text-base font-medium text-gray-900">Session Mode</legend>
+                    <p class="text-sm text-gray-500">Choose when trainees receive feedback on their decisions.</p>
+                    <div class="mt-4 space-y-4">
+                        <div class="flex items-center">
+                            <input id="mode-training" name="session-mode" type="radio" value="training" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                            <label for="mode-training" class="ml-3 block text-sm font-medium text-gray-700">
+                                Training Mode <span class="text-gray-500 font-normal">(Immediate Feedback)</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center">
+                            <input id="mode-simulation" name="session-mode" type="radio" value="simulation" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                            <label for="mode-simulation" class="ml-3 block text-sm font-medium text-gray-700">
+                                Simulation Mode <span class="text-gray-500 font-normal">(No Trainee Feedback)</span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+            </div>
             
-            document.getElementById('start-session-btn').addEventListener('click', async () => {
-                const hubMode = document.getElementById('hub-mode-checkbox').checked;
-                const slots = {};
-                urgencies.forEach(urgency => types.forEach(type => {
-                    const safeTypeId = type.replace(/[\s/]+/g, '-');
-                    const inputId = `slot-${urgency}-${safeTypeId}`;
-                    
-                    // ** THE ROBUST FIX **
-                    // Create the database key using the same safe, sanitized version.
-                    const safeKey = `${urgency}|${safeTypeId}`;
-                    
-                    slots[safeKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
-                }));
-                const scenarioStatus = {};
-                if (hubMode) { scenarios.forEach(s => { scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null }; }); }
-                await db.collection('sessions').doc(groupName).set({ groupName, hubMode, slots, scenarioStatus });
-                showScenarioList(groupName);
+            <div id="slot-inputs" class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4"></div>
+            
+            <div class="mt-8 flex justify-end gap-4">
+                <button id="back-to-group-selection-btn" class="btn bg-gray-200 hover:bg-gray-300">Back</button>
+                <button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button>
+            </div>
+        </div>`;
+
+    const slotInputsContainer = document.getElementById('slot-inputs');
+    const urgencies = ['Red', 'Amber', 'Green'];
+    // This list of types should match the trainee tool exactly
+    const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
+    
+    urgencies.forEach(urgency => types.forEach(type => {
+        // Sanitize the type string to create a valid HTML ID
+        const safeTypeId = type.replace(/[\s/]+/g, '-');
+        const id = `slot-${urgency}-${safeTypeId}`;
+        const defaultVal = 50;
+        slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
+    }));
+
+    document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupSelection);
+    
+    document.getElementById('start-session-btn').addEventListener('click', async () => {
+        const hubMode = document.getElementById('hub-mode-checkbox').checked;
+        const sessionMode = document.querySelector('input[name="session-mode"]:checked').value;
+        const slots = {};
+        
+        urgencies.forEach(urgency => types.forEach(type => {
+            const safeTypeId = type.replace(/[\s/]+/g, '-');
+            const inputId = `slot-${urgency}-${safeTypeId}`;
+            // Use the same sanitized key for the database object
+            const dbKey = `${urgency}|${safeTypeId}`;
+            slots[dbKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
+        }));
+        
+        const scenarioStatus = {};
+        if (hubMode) {
+            scenarios.forEach(s => {
+                if(s && s.id) { // Ensure scenario and id exist
+                    scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null };
+                }
             });
         }
+        
+        await db.collection('sessions').doc(groupName).set({ groupName, hubMode, sessionMode, slots, scenarioStatus });
+        showScenarioList(groupName);
+    });
+}
         
         function showScenarioList(groupName) {
             appView.innerHTML = `<div id="scenario-list-view"><div class="sm:flex sm:items-center sm:justify-between mb-4"><div><button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button></div><div class="mt-4 sm:mt-0"><button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button></div></div><div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
