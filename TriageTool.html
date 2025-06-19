@@ -514,112 +514,112 @@
     updateUI();
 }
 
-        async function handleSaveDecision() {
-            const saveButton = document.getElementById('save-btn');
-            const currentScenario = scenarios[currentScenarioIndex];
+async function handleSaveDecision() {
+    const saveButton = document.getElementById('save-btn');
+    const currentScenario = scenarios[currentScenarioIndex];
 
-            if (!currentScenario) {
-                alert("Error: Cannot find current scenario data. Please try again.");
-                return;
-            }
+    if (!currentScenario) {
+        alert("Error: Cannot find current scenario data. Please try again.");
+        return;
+    }
 
-            saveButton.disabled = true;
-            saveButton.textContent = 'Saving...';
+    saveButton.disabled = true;
+    saveButton.textContent = 'Saving...';
+    
+    const userDecision = {
+        urgency: document.getElementById('urgency').value,
+        consultationType: document.getElementById('consultation-type').value,
+        requiredWith: document.getElementById('required-with').value,
+        triageNotes: document.getElementById('triage-notes').value.trim(),
+        scenario: currentScenario,
+        scenarioId: currentScenario.id,
+        gpName: gpName,
+        groupName: groupName,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
+    const sessionRef = db.collection('sessions').doc(groupName);
+
+    try {
+        const querySnapshot = await db.collection("decisions")
+            .where("groupName", "==", groupName)
+            .where("gpName", "==", gpName)
+            .where("scenarioId", "==", currentScenario.id)
+            .limit(1)
+            .get();
+
+        const existingDecisionDoc = querySnapshot.docs[0];
+        const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
+        
+        const success = await db.runTransaction(async (transaction) => {
+            const sessionDoc = await transaction.get(sessionRef);
+            if (!sessionDoc.exists) throw "Session document does not exist!";
             
-            const userDecision = {
-                urgency: document.getElementById('urgency').value,
-                consultationType: document.getElementById('consultation-type').value,
-                requiredWith: document.getElementById('required-with').value,
-                triageNotes: document.getElementById('triage-notes').value.trim(),
-                scenario: currentScenario,
-                scenarioId: currentScenario.id,
-                gpName: gpName,
-                groupName: groupName,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            const sessionData = sessionDoc.data();
+            const currentSlots = sessionData.slots;
+            const updates = {};
+            
+            const isRevising = !!existingDecisionDoc;
+            const isSwapping = isRevising && oldSlotKey !== newSlotKey;
+            const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
 
-            const newSlotKey = `<span class="math-inline">\{userDecision\.urgency\}\|</span>{userDecision.consultationType}`;
-            const sessionRef = db.collection('sessions').doc(groupName);
-
-            try {
-                const querySnapshot = await db.collection("decisions")
-                    .where("groupName", "==", groupName)
-                    .where("gpName", "==", gpName)
-                    .where("scenarioId", "==", currentScenario.id)
-                    .limit(1)
-                    .get();
-
-                const existingDecisionDoc = querySnapshot.docs[0];
-                const oldSlotKey = existingDecisionDoc ? `<span class="math-inline">\{existingDecisionDoc\.data\(\)\.urgency\}\|</span>{existingDecisionDoc.data().consultationType}` : null;
-                
-                const success = await db.runTransaction(async (transaction) => {
-                    const sessionDoc = await transaction.get(sessionRef);
-                    if (!sessionDoc.exists) throw "Session document does not exist!";
-                    
-                    const sessionData = sessionDoc.data();
-                    const currentSlots = sessionData.slots;
-                    const updates = {};
-                    
-                    const isRevising = !!existingDecisionDoc;
-                    const isSwapping = isRevising && oldSlotKey !== newSlotKey;
-                    const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-
-                    if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
-                        return false;
-                    }
-                    
-                        if (isSwapping) {
-                            updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
-                        }
-                        if (!isRevising || isSwapping) {
-                            updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
-                        }
-                    }
-
-                    if (currentSessionInfo.hubMode) {
-                        updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
-                    }
-                    
-                    if (Object.keys(updates).length > 0) {
-                        transaction.update(sessionRef, updates);
-                    }
-
-                    if (existingDecisionDoc) {
-                        transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
-                    } else {
-                        const newDecisionRef = db.collection("decisions").doc();
-                        transaction.set(newDecisionRef, userDecision);
-                    }
-                    
-                    return true;
-                });
-
-                if (success) {
-                    delete unsavedDecisions[userDecision.scenarioId];
-                    userDecisions.set(userDecision.scenarioId, userDecision);
-
-                    if (currentSessionInfo.sessionMode === 'training' && userDecision.scenario.modelAnswer) {
-                        renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
-                    } else {
-                        saveButton.textContent = 'Saved ✓';
-                        saveButton.classList.add('save-btn-feedback');
-                        setTimeout(() => {
-                            proceedToNextStep();
-                        }, 1000);
-                    }
-                } else {
-                    alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
-                }
-            } catch (error) {
-                console.error("Save/Update decision failed: ", error);
-                alert("Could not save decision due to a server error.");
-            } finally {
-                if (!saveButton.classList.contains('save-btn-feedback')) {
-                    saveButton.disabled = false;
-                    saveButton.textContent = 'Save Decision';
-                }
+            if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
+                return false;
             }
+            
+            // This is the corrected logic block without extra braces
+            if (isSwapping) {
+                updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
+            }
+            if (!isRevising || isSwapping) {
+                updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
+            }
+
+            if (currentSessionInfo.hubMode) {
+                updates[`scenarioStatus.${userDecision.scenarioId}`] = { status: 'completed', completedBy: gpName, completedAt: userDecision.timestamp };
+            }
+            
+            if (Object.keys(updates).length > 0) {
+                transaction.update(sessionRef, updates);
+            }
+
+            if (existingDecisionDoc) {
+                transaction.update(db.collection("decisions").doc(existingDecisionDoc.id), userDecision);
+            } else {
+                const newDecisionRef = db.collection("decisions").doc();
+                transaction.set(newDecisionRef, userDecision);
+            }
+            
+            return true;
+        });
+
+        if (success) {
+            delete unsavedDecisions[userDecision.scenarioId];
+            userDecisions.set(userDecision.scenarioId, userDecision);
+
+            if (currentSessionInfo.sessionMode === 'training' && userDecision.scenario.modelAnswer) {
+                renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
+            } else {
+                saveButton.textContent = 'Saved ✓';
+                saveButton.classList.add('save-btn-feedback');
+                setTimeout(() => {
+                    proceedToNextStep();
+                }, 1000);
+            }
+        } else {
+            alert(`Sorry, all "${userDecision.urgency} - ${userDecision.consultationType.replace(/-/g, ' ')}" slots are now full.`);
         }
+    } catch (error) {
+        console.error("Save/Update decision failed: ", error);
+        alert("Could not save decision due to a server error.");
+    } finally {
+        if (!saveButton.classList.contains('save-btn-feedback')) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Decision';
+        }
+    }
+}
         
 function renderFeedbackView(userDecision, modelAnswer) {
     const container = document.getElementById('feedback-view');
