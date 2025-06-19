@@ -660,10 +660,15 @@ async function handleSaveDecision() {
         // Only show detailed feedback in 'training' mode if a model answer exists
         renderFeedbackView(userDecision, userDecision.scenario.modelAnswer);
     } else {
-        // In 'simulation' mode, or if there's no model answer, just give a simple confirmation
-        alert("Decision Saved.");
+    // In 'simulation' mode, give temporary visual feedback on the button
+    const saveButton = document.getElementById('save-btn');
+    saveButton.textContent = 'Saved ✓';
+    saveButton.classList.add('save-btn-feedback'); // This class makes the button green
+
+    // Wait for 1 second before moving on, so the user can see the confirmation
+    setTimeout(() => {
         proceedToNextStep();
-    }
+    }, 1000); // 1000 milliseconds = 1 second
 }
 
     } catch (error) {
