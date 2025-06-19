@@ -90,7 +90,7 @@
         
         const allViews = ['loading-view', 'auth-view', 'welcome-screen', 'triage-view', 'access-denied-view', 'hub-view', 'facilitator-hub-view', 'feedback-view'];
 
-       // STEP 3: SET UP THE DOM EVENT LISTENER
+// STEP 3: SET UP THE DOM EVENT LISTENER
 document.addEventListener('DOMContentLoaded', () => {
     const checkFirebase = setInterval(() => {
         if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
@@ -106,15 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 50);
 
     // --- Listeners are attached ONCE here for robustness ---
-    document.getElementById('save-btn').addEventListener('click', handleSaveDecision);
+    document.getElementById('save-btn').addEventListener('click', handleSaveDecision); // This is the line that was likely missing
     document.getElementById('prev-btn').addEventListener('click', () => {
-    saveUnsavedState(); // <-- ADD THIS LINE
-    if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
-});
-document.getElementById('next-btn').addEventListener('click', () => {
-    saveUnsavedState(); // <-- ADD THIS LINE
-    if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
-});
+        saveUnsavedState();
+        if (currentScenarioIndex > 0) renderScenario(--currentScenarioIndex);
+    });
+    document.getElementById('next-btn').addEventListener('click', () => {
+        saveUnsavedState();
+        if (currentScenarioIndex < scenarios.length - 1) renderScenario(++currentScenarioIndex);
+    });
 
     // Delegated event listener for dynamically created buttons like 'Continue'
     document.addEventListener('click', (event) => {
