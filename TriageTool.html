@@ -372,7 +372,7 @@
             }
         }
         
-        function listenToSlots() {
+function listenToSlots() {
     if (unsubscribeFromSlots) unsubscribeFromSlots();
     
     const sessionRef = db.collection('sessions').doc(groupName);
@@ -396,19 +396,19 @@
                 urgencySlots.forEach(key => {
                     const type = key.split('|')[1].replace(/-/g, ' ');
                     const count = slots[key];
-                    let colorClass = 'slot-high';
-                    if (count <= 2) colorClass = 'slot-low';
-                    else if (count <= 5) colorClass = 'slot-medium';
                     
-                    // This line now correctly uses backticks
-                    slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold ${colorClass}">${count}</span></div>`;
+                    // --- THIS IS THE FIX ---
+                    // Dynamically set the text color based on the urgency
+                    const urgencyColorClass = `text-${urgency.toLowerCase()}-600`;
+                    
+                    slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold ${urgencyColorClass}">${count}</span></div>`;
                 });
             }
         });
     });
 }
         
-        function renderScenario(index) {
+function renderScenario(index) {
     currentScenarioIndex = index;
     const scenario = scenarios[index];
     if (!scenario) {
@@ -418,7 +418,7 @@
 
     const saveButton = document.getElementById('save-btn');
 
-    // This is the HTML block that needs to be enclosed in backticks ``
+    // This is the HTML block for the main scenario details
     const scenarioDetailsHtml = `
         <div class="space-y-6">
             <div class="p-4 bg-indigo-50 rounded-lg">
@@ -437,8 +437,8 @@
                 <div>
                     <h4 class="font-semibold text-gray-800">Attachment:</h4>
                     <div class="mt-2">
-                        <a href="<span class="math-inline">\{scenario\.attachments\}" target\="\_blank"\>
-<img src\="</span>{scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
+                        <a href="${scenario.attachments}" target="_blank">
+                            <img src="${scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
                         </a>
                     </div>
                 </div>` : ''}
@@ -454,7 +454,8 @@
             <div class="border-t pt-4 space-y-4">
                  <div>
                     <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
-                    <p class="mt-1 text-red-600 font-medium">${scenario.worried || 'Not provided'}</p>
+                    // --- THIS IS THE FIX: The classes on this <p> tag are removed ---
+                    <p class="mt-1">${scenario.worried || 'Not provided'}</p>
                 </div>
                 <div>
                     <h4 class="font-semibold text-gray-800">Expectations:</h4>
@@ -476,6 +477,7 @@
 
     if (userDecisions.has(scenario.id)) {
         const lockedDecision = userDecisions.get(scenario.id);
+        
         const lockedTriageOptionsHtml = `
             <div class="mt-6 pt-6 border-t border-gray-200 space-y-4">
                 <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -513,7 +515,6 @@
 
     updateUI();
 }
-
 async function handleSaveDecision() {
     const saveButton = document.getElementById('save-btn');
     const currentScenario = scenarios[currentScenarioIndex];
