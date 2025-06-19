@@ -361,10 +361,17 @@ if (currentSessionInfo.sessionMode === 'training') {
                 });
 
                 if (nextCaseId) {
-                    const scenarioIndex = scenarios.findIndex(s => s.id === nextCaseId);
-                    showView('triage-view');
-                    document.getElementById('standard-nav').classList.add('hidden');
-                    renderScenario(scenarioIndex);
+    const scenarioIndex = scenarios.findIndex(s => s.id === nextCaseId);
+    showView('triage-view');
+
+    // --- FIX: Show the nav bar, but hide the Prev/Next buttons ---
+    document.getElementById('standard-nav').classList.remove('hidden');
+    document.getElementById('prev-btn').classList.add('hidden');
+    document.getElementById('next-btn').classList.add('hidden');
+    // --- END OF FIX ---
+
+    renderScenario(scenarioIndex);
+}
                 } else {
                     hubStatus.textContent = 'All cases have been completed!';
                 }
