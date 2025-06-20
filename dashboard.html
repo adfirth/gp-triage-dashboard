@@ -517,6 +517,34 @@ async function renderGroupManagementView
             };
             reader.readAsText(file);
         }
+
+        async function archiveMultipleGroups(groupIds) {
+    if (!groupIds || groupIds.length === 0) {
+        alert("No groups selected.");
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to archive ${groupIds.length} selected group(s)?`)) {
+        return;
+    }
+
+    // A "Write Batch" lets us perform multiple operations as a single request
+    const batch = db.batch();
+
+    groupIds.forEach(groupId => {
+        const sessionRef = db.collection('sessions').doc(groupId);
+        batch.update(sessionRef, { isArchived: true });
+    });
+
+    try {
+        await batch.commit(); // Commit all the updates at once
+        alert(`${groupIds.length} group(s) have been successfully archived.`);
+        renderGroupManagementView(); // Refresh the view
+    } catch (error) {
+        console.error("Error archiving multiple groups: ", error);
+        alert("An error occurred while archiving the groups.");
+    }
+}
         
         function renderSessionSetup(groupName) {
             const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
