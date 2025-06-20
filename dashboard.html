@@ -611,35 +611,51 @@
         }
         
         function showScenarioList(groupName) {
-            appView.innerHTML = `<div id="scenario-list-view"><div class="sm:flex sm:items-center sm:justify-between mb-4"><div><button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button></div><div class="mt-4 sm:mt-0"><button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button></div></div><div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
-            document.getElementById('back-to-group-btn').addEventListener('click', () => { if (sessionListener) sessionListener(); renderGroupSelection(); });
-            document.getElementById('clear-btn').addEventListener('click', () => clearGroupData(groupName));
-            const container = document.getElementById('scenario-list-container');
-            container.innerHTML = '<p class="col-span-full">Loading scenario statuses...</p>';
-            if (sessionListener) sessionListener();
-            sessionListener = db.collection('sessions').doc(groupName).onSnapshot(doc => {
-                if (!doc.exists) { container.innerHTML = '<p class="col-span-full text-red-500">Session deleted.</p>'; return; }
-                const sessionData = doc.data();
-                container.innerHTML = '';
-                scenarios.forEach(scenario => {
-                    const card = document.createElement('div');
-                    let statusHtml = '';
-                    let cardClass = 'bg-white hover:bg-indigo-50 cursor-pointer';
-                    if (sessionData.hubMode && sessionData.scenarioStatus && sessionData.scenarioStatus[scenario.id]) {
-                        const statusInfo = sessionData.scenarioStatus[scenario.id];
-                        let statusText = 'Available';
-                        let statusClass = 'status-available';
-                        if (statusInfo.status === 'locked') { statusText = `Locked by ${statusInfo.lockedBy}`; statusClass = 'status-locked'; } 
-                        else if (statusInfo.status === 'completed') { statusText = `Completed by ${statusInfo.completedBy}`; statusClass = 'status-completed'; cardClass = 'case-card-completed'; }
-                        statusHtml = `<div class="flex items-center mt-2 text-xs"><span class="status-dot ${statusClass}"></span>${statusText}</div>`;
-                    }
-                    card.className = `p-4 rounded-lg shadow hover:shadow-lg transition ${cardClass}`;
-                    card.innerHTML = `<h3 class="font-bold text-gray-800">Case ${scenario.id}: ${scenario.name}</h3><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p>${statusHtml}`;
-                    card.addEventListener('click', () => showDecisionDetails(scenario.id, `Case ${scenario.id}: ${scenario.name}`));
-                    container.appendChild(card);
-                });
-            });
-        }
+    // Add a new button next to the "Clear" button
+    appView.innerHTML = `<div id="scenario-list-view">
+        <div class="sm:flex sm:items-center sm:justify-between mb-4">
+            <div>
+                <button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button>
+            </div>
+            <div class="mt-4 sm:mt-0 flex space-x-2">
+                <button id="archive-btn" class="btn bg-blue-600 text-white hover:bg-blue-700 text-sm">Archive Group</button>
+                <button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button>
+            </div>
+        </div>
+        <div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+    </div>`;
+
+    document.getElementById('back-to-group-btn').addEventListener('click', () => { if (sessionListener) sessionListener(); renderGroupSelection(); });
+    document.getElementById('clear-btn').addEventListener('click', () => clearGroupData(groupName));
+    // Add the event listener for the new archive button
+    document.getElementById('archive-btn').addEventListener('click', () => archiveGroup(groupName));
+
+    const container = document.getElementById('scenario-list-container');
+    container.innerHTML = '<p class="col-span-full">Loading scenario statuses...</p>';
+    if (sessionListener) sessionListener();
+    sessionListener = db.collection('sessions').doc(groupName).onSnapshot(doc => {
+        if (!doc.exists) { container.innerHTML = '<p class="col-span-full text-red-500">Session deleted.</p>'; return; }
+        const sessionData = doc.data();
+        container.innerHTML = '';
+        scenarios.forEach(scenario => {
+            const card = document.createElement('div');
+            let statusHtml = '';
+            let cardClass = 'bg-white hover:bg-indigo-50 cursor-pointer';
+            if (sessionData.hubMode && sessionData.scenarioStatus && sessionData.scenarioStatus[scenario.id]) {
+                const statusInfo = sessionData.scenarioStatus[scenario.id];
+                let statusText = 'Available';
+                let statusClass = 'status-available';
+                if (statusInfo.status === 'locked') { statusText = `Locked by ${statusInfo.lockedBy}`; statusClass = 'status-locked'; } 
+                else if (statusInfo.status === 'completed') { statusText = `Completed by ${statusInfo.completedBy}`; statusClass = 'status-completed'; cardClass = 'case-card-completed'; }
+                statusHtml = `<div class="flex items-center mt-2 text-xs"><span class="status-dot ${statusClass}"></span>${statusText}</div>`;
+            }
+            card.className = `p-4 rounded-lg shadow hover:shadow-lg transition ${cardClass}`;
+            card.innerHTML = `<h3 class="font-bold text-gray-800">Case ${scenario.id}: ${scenario.name}</h3><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p>${statusHtml}`;
+            card.addEventListener('click', () => showDecisionDetails(scenario.id, `Case ${scenario.id}: ${scenario.name}`));
+            container.appendChild(card);
+        });
+    });
+}
 
         function showDecisionDetails(scenarioId, scenarioName) {
             if (sessionListener) sessionListener();
@@ -659,6 +675,30 @@
                     });
                 }).catch(err => { console.error(err); decisionListContainer.innerHTML = `<p class="text-red-500">Error loading decisions.</p>`; });
         }
+
+async function archiveGroup(groupName) {
+    if (!confirm(`Are you sure you want to archive the group "${groupName}"? Trainees will no longer be able to access it.`)) {
+        return;
+    }
+    try {
+        const sessionRef = db.collection('sessions').doc(groupName);
+        await sessionRef.update({
+            isArchived: true
+        });
+        alert(`Group "${groupName}" has been successfully archived.`);
+        
+        // Detach listener and return to the main group selection screen
+        if (sessionListener) {
+            sessionListener();
+            sessionListener = null;
+        }
+        renderGroupSelection();
+
+    } catch (error) {
+        console.error("Error archiving group: ", error);
+        alert("An error occurred while archiving the group. Please try again.");
+    }
+}   
         
         async function clearGroupData(groupName) {
             if (!confirm(`Are you sure you want to delete ALL decisions and reset for "${groupName}"?`)) return;
