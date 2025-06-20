@@ -71,42 +71,64 @@
         
         const appView = document.getElementById('app-view');
 
-        // STEP 3: SET UP THE DOM EVENT LISTENER
-        document.addEventListener('DOMContentLoaded', () => {
-            const checkFirebase = setInterval(() => {
-                if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-                    try {
-                        clearInterval(checkFirebase);
-                        auth = firebase.auth();
-                        db = firebase.firestore();
-                        storage = firebase.storage();
-                        main();
-                    } catch (e) {
-                        console.error("Error initializing Firebase services:", e);
-                    }
+       // STEP 3: SET UP THE DOM EVENT LISTENER
+document.addEventListener('DOMContentLoaded', () => {
+    // ... your firebase check code remains the same ...
+
+    // This single event listener now manages everything in the app-view
+    document.getElementById('app-view').addEventListener('click', (event) => {
+        const target = event.target;
+        
+        // Handle Manage button clicks
+        if (target.classList.contains('manage-btn') && target.dataset.groupName) {
+            showScenarioList(target.dataset.groupName);
+        }
+
+        // Handle the new "Archive Selected" button
+        if (target.id === 'archive-selected-btn') {
+            const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
+                                        .map(cb => cb.dataset.groupName);
+            archiveMultipleGroups(selectedGroups);
+        }
+    });
+
+    // Add a separate listener for checkbox changes to update the UI
+    document.getElementById('app-view').addEventListener('change', (event) => {
+        const target = event.target;
+        const groupCheckboxes = document.querySelectorAll('.group-checkbox');
+        const selectAllCheckbox = document.getElementById('select-all-groups');
+        const archiveButton = document.getElementById('archive-selected-btn');
+
+        if (target.id === 'select-all-groups') {
+            // "Select All" was clicked, so update all other checkboxes
+            groupCheckboxes.forEach(cb => cb.checked = target.checked);
+        }
+
+        // Update the main button's state and count whenever any checkbox changes
+        if (target.classList.contains('group-checkbox') || target.id === 'select-all-groups') {
+             const checkedCount = Array.from(document.querySelectorAll('.group-checkbox:checked')).length;
+             
+             if (archiveButton) {
+                archiveButton.disabled = checkedCount === 0;
+                archiveButton.textContent = `Archive Selected (${checkedCount})`;
+             }
+
+             if (selectAllCheckbox) {
+                // If all are checked, the main box is checked. If none, it's unchecked. If some, it's indeterminate.
+                if (checkedCount === 0) {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = false;
+                } else if (checkedCount === groupCheckboxes.length) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
+                } else {
+                    selectAllCheckbox.checked = false;
+                    selectAllCheckbox.indeterminate = true;
                 }
-            }, 50);
-
-            // ** ADD STEP 3 HERE **
-            // This single event listener manages clicks for the entire app view
-            document.getElementById('app-view').addEventListener('click', (event) => {
-                const target = event.target;
-                const groupName = target.dataset.groupName;
-
-                // If the clicked element doesn't have a group name, do nothing
-                if (!groupName) return;
-
-                // If the 'Manage' button was clicked
-                if (target.classList.contains('manage-btn')) {
-                    showScenarioList(groupName);
-                }
-
-                // If the 'Archive' button was clicked
-                if (target.classList.contains('archive-btn')) {
-                    archiveGroup(groupName);
-                }
-            });
-        });
+             }
+        }
+    });
+});
         
         // STEP 4: APPLICATION FUNCTIONS
         function main() {
