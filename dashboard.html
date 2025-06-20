@@ -71,9 +71,25 @@
         
         const appView = document.getElementById('app-view');
 
-       // STEP 3: SET UP THE DOM EVENT LISTENER
+// STEP 3: SET UP THE DOM EVENT LISTENER
 document.addEventListener('DOMContentLoaded', () => {
-    // ... your firebase check code remains the same ...
+    // ---- THIS IS THE MISSING PART ----
+    // This logic checks if Firebase is ready and then starts the app
+    const checkFirebase = setInterval(() => {
+        if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+            try {
+                clearInterval(checkFirebase);
+                auth = firebase.auth();
+                db = firebase.firestore();
+                storage = firebase.storage();
+                main(); // The crucial call to start the application
+            } catch (e) {
+                console.error("Error initializing Firebase services:", e);
+            }
+        }
+    }, 50);
+    // ---- END OF MISSING PART ----
+
 
     // This single event listener now manages everything in the app-view
     document.getElementById('app-view').addEventListener('click', (event) => {
@@ -98,6 +114,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const groupCheckboxes = document.querySelectorAll('.group-checkbox');
         const selectAllCheckbox = document.getElementById('select-all-groups');
         const archiveButton = document.getElementById('archive-selected-btn');
+
+        if (!groupCheckboxes.length && !selectAllCheckbox && !archiveButton) return;
 
         if (target.id === 'select-all-groups') {
             // "Select All" was clicked, so update all other checkboxes
