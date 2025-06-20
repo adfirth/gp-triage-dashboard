@@ -387,7 +387,7 @@
                             const type = key.split('|')[1].replace(/-/g, ' ');
                             const count = slots[key];
                             const urgencyColorClass = `text-${urgency.toLowerCase()}-600`;
-                            slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold <span class="math-inline">\{urgencyColorClass\}"\></span>{count}</span></div>`;
+                            slotDisplay.innerHTML += `<div class="flex justify-between items-center py-1 pl-2"><span class="text-gray-600">${type}:</span><span class="font-semibold ${urgencyColorClass}">${count}</span></div>`;
                         });
                     }
                 });
@@ -415,7 +415,7 @@
                 groupName: groupName,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             };
-            const newSlotKey = `<span class="math-inline">\{userDecision\.urgency\}\|</span>{userDecision.consultationType}`;
+            const newSlotKey = `${userDecision.urgency}|${userDecision.consultationType}`;
             const sessionRef = db.collection('sessions').doc(groupName);
             try {
                 const querySnapshot = await db.collection("decisions")
@@ -425,7 +425,7 @@
                     .limit(1)
                     .get();
                 const existingDecisionDoc = querySnapshot.docs[0];
-                const oldSlotKey = existingDecisionDoc ? `<span class="math-inline">\{existingDecisionDoc\.data\(\)\.urgency\}\|</span>{existingDecisionDoc.data().consultationType}` : null;
+                const oldSlotKey = existingDecisionDoc ? `${existingDecisionDoc.data().urgency}|${existingDecisionDoc.data().consultationType}` : null;
                 
                 const success = await db.runTransaction(async (transaction) => {
                     const sessionDoc = await transaction.get(sessionRef);
@@ -504,13 +504,13 @@
                         <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
                         <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                             <p><b>Name:</b> ${scenario.name || 'Not provided'}</p>
-                            <p><b>Age:</b> <span class="math-inline">\{scenario\.age \|\| 'Not provided'\}</p\>
-</div\>
-</div\>
-<div class\="space\-y\-4"\>
-<div\>
-<h4 class\="font\-semibold text\-gray\-800"\>Describe the problem\:</h4\>
-<p class\="mt\-1 p\-3 bg\-gray\-100 rounded\-md"\></span>{scenario.problem || 'Not provided'}</p>
+                            <p><b>Age:</b> ${scenario.age || 'Not provided'}</p>
+                        </div>
+                    </div>
+                    <div class="space-y-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Describe the problem:</h4>
+                            <p class="mt-1 p-3 bg-gray-100 rounded-md">${scenario.problem || 'Not provided'}</p>
                         </div>
                         ${scenario.attachments ? `
                         <div>
@@ -523,31 +523,31 @@
                         </div>` : ''}
                         <div>
                             <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
-                            <p class="mt-1"><span class="math-inline">\{scenario\.durationAndProgression \|\| 'Not provided'\}</p\>
-</div\>
-<div\>
-<h4 class\="font\-semibold text\-gray\-800"\>Have you tried anything to help?</h4\>
-<p class\="mt\-1"\></span>{scenario.selfHelp || 'Not provided'}</p>
+                            <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Have you tried anything to help?</h4>
+                            <p class="mt-1">${scenario.selfHelp || 'Not provided'}</p>
                         </div>
                     </div>
                     <div class="border-t pt-4 space-y-4">
                         <div>
                             <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
-                            <p class="mt-1"><span class="math-inline">\{scenario\.worried \|\| 'Not provided'\}</p\>
-</div\>
-<div\>
-<h4 class\="font\-semibold text\-gray\-800"\>Expectations\:</h4\>
-<p class\="mt\-1"\></span>{scenario.expectations || 'Not provided'}</p>
+                            <p class="mt-1">${scenario.worried || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Expectations:</h4>
+                            <p class="mt-1">${scenario.expectations || 'Not provided'}</p>
                         </div>
                     </div>
                     <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <h4 class="font-semibold text-gray-800">Contact method preference:</h4>
-                            <p class="mt-1"><span class="math-inline">\{scenario\.contactMethod \|\| 'Not provided'\}</p\>
-</div\>
-<div\>
-<h4 class\="font\-semibold text\-gray\-800"\>Preferred clinician\:</h4\>
-<p class\="mt\-1"\></span>{scenario.preferredClinician || 'Not provided'}</p>
+                            <p class="mt-1">${scenario.contactMethod || 'Not provided'}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-800">Preferred clinician:</h4>
+                            <p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p>
                         </div>
                     </div>
                 </div>
@@ -562,11 +562,11 @@
                             <p class="text-sm text-yellow-700">You have already saved a decision for this case.</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label class="block text-sm font-medium text-gray-700">Urgency</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="<span class="math-inline">\{lockedDecision\.urgency\}" readonly\></div\>
-<div\><label class\="block text\-sm font\-medium text\-gray\-700"\>Consultation type</label\><input type\="text" class\="mt\-1 bg\-gray\-100 p\-2 w\-full border rounded\-md" value\="</span>{lockedDecision.consultationType.replace(/-/g, ' ')}" readonly></div>
-                            <div><label class="block text-sm font-medium text-gray-700">Required with</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="<span class="math-inline">\{lockedDecision\.requiredWith\}" readonly\></div\>
-</div\>
-<div\><label class\="block text\-sm font\-medium text\-gray\-700"\>Triage notes / Management plan</label\><div class\="mt\-1"\><textarea rows\="4" class\="shadow\-sm mt\-1 block w\-full sm\:text\-sm border\-gray\-300 rounded\-md p\-2 bg\-gray\-100" readonly\></span>{lockedDecision.triageNotes}</textarea></div></div>
+                            <div><label class="block text-sm font-medium text-gray-700">Urgency</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.urgency}" readonly></div>
+                            <div><label class="block text-sm font-medium text-gray-700">Consultation type</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.consultationType.replace(/-/g, ' ')}" readonly></div>
+                            <div><label class="block text-sm font-medium text-gray-700">Required with</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.requiredWith}" readonly></div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2 bg-gray-100" readonly>${lockedDecision.triageNotes}</textarea></div></div>
                     </div>`;
                 
                 document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + lockedTriageOptionsHtml;
@@ -577,7 +577,8 @@
                 saveButton.textContent = 'Save Decision';
                 saveButton.classList.remove('save-btn-feedback');
                 
-                const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div><div>
+                const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div>
+                <div>
                     <label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label>
                     <select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                         ${currentSessionInfo.availableClinicians.map(role => `<option value="${role}">${role}</option>`).join('')}
@@ -595,7 +596,7 @@
             }
             updateUI();
         }
-
+        
         function renderFeedbackView(userDecision, modelAnswer) {
             const container = document.getElementById('feedback-view');
             let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
@@ -610,9 +611,9 @@
                 const resultIcon = isCorrect ? '<span class="text-green-600 font-bold">✅ Correct</span>' : '<span class="text-red-600 font-bold">❌ Incorrect</span>';
                 
                 feedbackHtml += `
-                    <div class="p-4 rounded-lg <span class="math-inline">\{isCorrect ? 'bg\-green\-50' \: 'bg\-red\-50'\}"\>
-<div class\="flex justify\-between items\-center"\>
-<h3 class\="font\-bold text\-lg text\-gray\-900"\></span>{comp.title}</h3>
+                    <div class="p-4 rounded-lg ${isCorrect ? 'bg-green-50' : 'bg-red-50'}">
+                        <div class="flex justify-between items-center">
+                            <h3 class="font-bold text-lg text-gray-900">${comp.title}</h3>
                             ${resultIcon}
                         </div>
                         <div class="grid grid-cols-2 gap-4 text-sm mt-2">
@@ -629,11 +630,13 @@
             container.innerHTML = feedbackHtml;
             showView('feedback-view');
         }
+
         function updateUI() {
             document.getElementById('scenario-counter').textContent = `Scenario ${currentScenarioIndex + 1} of ${scenarios.length}`;
             document.getElementById('prev-btn').disabled = currentScenarioIndex === 0;
             document.getElementById('next-btn').disabled = currentScenarioIndex === scenarios.length - 1;
         }
+
         function saveUnsavedState() {
             const scenario = scenarios[currentScenarioIndex];
             if (!scenario) return;
@@ -650,6 +653,7 @@
                 };
             }
         }
+        
         function proceedToNextStep() {
             if (currentSessionInfo.hubMode) {
                 showView('hub-view');
