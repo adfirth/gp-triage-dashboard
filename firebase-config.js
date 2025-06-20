@@ -1,5 +1,5 @@
 // firebase-config.js
-const firebaseConfig = {
+window.firebaseConfig = {
   apiKey: "PLACEHOLDER_API_KEY",
   authDomain: "PLACEHOLDER_AUTH_DOMAIN",
   projectId: "PLACEHOLDER_PROJECT_ID",

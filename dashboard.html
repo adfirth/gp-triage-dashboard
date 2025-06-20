@@ -109,6 +109,7 @@
         <div id="app-view" class="hidden w-full"></div>
     </main>
 
+    <script src="firebase-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -117,7 +118,17 @@
     <script>
         // STEP 1: INITIALIZE FIREBASE
         if (window.firebaseConfig) {
-          firebase.initializeApp(window.firebaseConfig);
+          try {
+            firebase.initializeApp(window.firebaseConfig);
+          } catch (error) {
+            console.error("Error initializing Firebase:", error);
+            document.getElementById('loading-view').innerHTML = '<div class="text-center p-8"><p class="text-red-500">Error: Could not connect to Firebase. Please check your configuration.</p></div>';
+            return;
+          }
+        } else {
+          console.error("Firebase configuration not found");
+          document.getElementById('loading-view').innerHTML = '<div class="text-center p-8"><p class="text-red-500">Error: Firebase configuration missing.</p></div>';
+          return;
         }
 
         // STEP 2: DECLARE GLOBAL VARIABLES
@@ -226,13 +237,21 @@
                         const userProfileDoc = await db.collection('users').doc(user.uid).get();
                         if (userProfileDoc.exists && userProfileDoc.data().role === 'facilitator') {
                             await loadScenariosFromDB();
-                            document.getElementById('header-controls').classList.remove('hidden');
-                            document.getElementById('app-nav').classList.remove('hidden');
-                            document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
+                            const headerControls = document.getElementById('header-controls');
+                            const appNav = document.getElementById('app-nav');
+                            const logoutBtn = document.getElementById('logout-btn');
                             
-                            document.getElementById('nav-sessions').addEventListener('click', (e) => { e.preventDefault(); activeView = 'sessions'; renderAppNavigationView(); });
-                            document.getElementById('nav-scenarios').addEventListener('click', (e) => { e.preventDefault(); activeView = 'scenarios'; renderAppNavigationView(); });
-                            document.getElementById('nav-admin').addEventListener('click', (e) => { e.preventDefault(); activeView = 'admin'; renderAppNavigationView(); });
+                            if (headerControls) headerControls.classList.remove('hidden');
+                            if (appNav) appNav.classList.remove('hidden');
+                            if (logoutBtn) logoutBtn.addEventListener('click', () => auth.signOut());
+                            
+                            const navSessions = document.getElementById('nav-sessions');
+                            const navScenarios = document.getElementById('nav-scenarios');
+                            const navAdmin = document.getElementById('nav-admin');
+                            
+                            if (navSessions) navSessions.addEventListener('click', (e) => { e.preventDefault(); activeView = 'sessions'; renderAppNavigationView(); });
+                            if (navScenarios) navScenarios.addEventListener('click', (e) => { e.preventDefault(); activeView = 'scenarios'; renderAppNavigationView(); });
+                            if (navAdmin) navAdmin.addEventListener('click', (e) => { e.preventDefault(); activeView = 'admin'; renderAppNavigationView(); });
                             
                             showView('app-view');
                             renderAppNavigationView();
@@ -243,10 +262,15 @@
                     } catch (error) {
                         console.error("Critical Error on Load:", error);
                         showView('access-denied-view');
+                        document.getElementById('access-denied-view').innerHTML = '<div class="card p-8 text-center max-w-md mx-auto"><h2 class="text-xl font-bold text-red-600">Application Error</h2><p class="mt-2">Failed to load user data. Please refresh and try again.</p><button id="error-logout-btn" class="mt-4 text-sm underline">Logout</button></div>';
+                        const errorLogoutBtn = document.getElementById('error-logout-btn');
+                        if (errorLogoutBtn) errorLogoutBtn.addEventListener('click', () => auth.signOut());
                     }
                 } else {
-                    document.getElementById('header-controls').classList.add('hidden');
-                    document.getElementById('app-nav').classList.add('hidden');
+                    const headerControls = document.getElementById('header-controls');
+                    const appNav = document.getElementById('app-nav');
+                    if (headerControls) headerControls.classList.add('hidden');
+                    if (appNav) appNav.classList.add('hidden');
                     showView('auth-view');
                     renderAuthForm();
                 }
@@ -257,8 +281,14 @@
             try {
                 const snapshot = await db.collection('scenarios').orderBy('id').get();
                 scenarios = snapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() }));
+                console.log(`Loaded ${scenarios.length} scenarios from database`);
             } catch (error) {
-                appView.innerHTML = `<div class="card p-8 text-center"><p class="text-red-500">Error: Could not load scenarios.</p></div>`;
+                console.error("Error loading scenarios:", error);
+                const appView = document.getElementById('app-view');
+                if (appView) {
+                    appView.innerHTML = `<div class="card p-8 text-center"><p class="text-red-500">Error: Could not load scenarios. Please check your internet connection and refresh the page.</p><p class="text-sm text-gray-500 mt-2">Error details: ${error.message}</p></div>`;
+                }
+                scenarios = []; // Set to empty array as fallback
                 throw error;
             }
         }
@@ -967,7 +997,7 @@
                     card.innerHTML = `<h3 class="font-bold" style="color:var(--color-text-dark);">Case ${scenario.id}: ${scenario.name}</h3><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p>${statusHtml}`;
                     card.addEventListener('click', () => showDecisionDetails(scenario.id));
                     container.appendChild(card);
-});
+                });
             });
         }
 
