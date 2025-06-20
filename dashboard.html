@@ -389,27 +389,27 @@ async function renderGroupManagementView(filterArchived = false) {
             const isArchived = doc.data().isArchived;
 
             // ** FIX IS HERE: Replaced all instances of 'groupName' with 'doc.id' **
-           row.innerHTML = `
-    <td class="p-4 relative"> <input type="checkbox" 
-               class="absolute top-1/2 left-4 -translate-y-1/2 group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" 
-               data-group-name="${doc.id}">
-
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap">
-        <div class="text-sm font-medium text-gray-900">${doc.id}</div>
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap">
-        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isArchived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}">
-            ${isArchived ? 'Archived' : 'Active'}
-        </span>
-    </td>
-    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-        ${isArchived 
-            ? `<button data-group-name="${doc.id}" class="reinstate-btn text-green-600 hover:text-green-900">Reinstate</button>`
-            : `<button data-group-name="${doc.id}" class="manage-btn text-indigo-600 hover:text-indigo-900">Manage</button>`
-        }
-    </td>
-`;
+            row.innerHTML = `
+                <td class="p-4">
+                    <div class="flex items-center">
+                        <input type="checkbox" class="group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-group-name="${doc.id}">
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${doc.id}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isArchived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}">
+                        ${isArchived ? 'Archived' : 'Active'}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    ${isArchived 
+                        ? `<button data-group-name="${doc.id}" class="reinstate-btn text-green-600 hover:text-green-900">Reinstate</button>`
+                        : `<button data-group-name="${doc.id}" class="manage-btn text-indigo-600 hover:text-indigo-900">Manage</button>`
+                    }
+                </td>
+            `;
             tableBody.appendChild(row);
         });
 
@@ -417,60 +417,6 @@ async function renderGroupManagementView(filterArchived = false) {
         console.error("Error loading sessions: ", error);
         tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Could not load sessions.</td></tr>';
     }
-}
-
-        function renderScenarioEditor() {
-    editingScenarioId = null; 
-    appView.innerHTML = `
-        <div class="card p-6 w-full">
-            <div class="flex justify-between items-center mb-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2>
-                    <p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p>
-                </div>
-                <button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button>
-            </div>
-            <div id="scenario-editor-list" class="mt-6 space-y-4"></div>
-            <div class="mt-8 border-t-2 border-gray-200 pt-6">
-                <h3 class="text-lg font-semibold text-gray-800">Bulk Import Scenarios</h3>
-                <p class="text-sm text-gray-500 mt-1">Select a properly formatted JSON file to import multiple scenarios at once.</p>
-                <input type="file" id="import-file-input" accept=".json" class="mt-3 block w-full max-w-xs text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer">
-            </div>
-        </div>`;
-
-    document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
-    document.getElementById('import-file-input').addEventListener('change', handleFileImport);
-
-    const listContainer = document.getElementById('scenario-editor-list');
-    listContainer.innerHTML = '';
-    if (!scenarios || scenarios.length === 0) {
-        listContainer.innerHTML = '<p class="text-gray-500">No scenarios found in the database.</p>';
-        return;
-    }
-
-    scenarios.forEach(scenario => {
-        if (!scenario) return; 
-
-        const item = document.createElement('div');
-        item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
-        item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, ${scenario.age}</p><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button data-id="${scenario.firestoreId}" class="btn text-sm bg-gray-200 hover:bg-gray-300 edit-btn">Edit</button><button data-id="${scenario.firestoreId}" data-name="Case ${scenario.id}: ${scenario.name}" class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200 delete-btn">Delete</button></div>`;
-        
-        item.querySelector('.edit-btn').addEventListener('click', (e) => {
-            const firestoreId = e.target.dataset.id;
-            const scenarioToEdit = scenarios.find(s => s.firestoreId === firestoreId);
-            if (scenarioToEdit) {
-                renderScenarioForm(scenarioToEdit);
-            }
-        });
-
-        item.querySelector('.delete-btn').addEventListener('click', (e) => {
-            const firestoreId = e.target.dataset.id;
-            const scenarioName = e.target.dataset.name;
-            deleteScenario(firestoreId, scenarioName);
-        });
-
-        listContainer.appendChild(item);
-    });
 }
         function renderScenarioForm(scenarioToEdit = null) {
             const isEditing = scenarioToEdit !== null;
