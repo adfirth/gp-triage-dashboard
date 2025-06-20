@@ -86,6 +86,9 @@
         .form-checkbox:focus, .form-radio:focus {
             --tw-ring-color: var(--color-primary);
         }
+        /* Fix checkbox alignment in tables */
+        th, td { vertical-align: middle; }
+        .form-checkbox { vertical-align: middle; margin-top: 0 !important; }
     </style>
 </head>
 <body>
@@ -968,7 +971,7 @@
                     card.innerHTML = `<h3 class="font-bold" style="color:var(--color-text-dark);">Case ${scenario.id}: ${scenario.name}</h3><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p>${statusHtml}`;
                     card.addEventListener('click', () => showDecisionDetails(scenario.id));
                     container.appendChild(card);
-});
+                });
             });
         }
 
