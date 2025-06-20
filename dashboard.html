@@ -402,7 +402,7 @@ async function renderGroupManagementView(filterArchived = false) {
         querySnapshot.forEach(doc => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td class="p-4 align-middle"><input type="checkbox" class="group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-group-name="${doc.id}"></td>
+                <td class="p-4" style="vertical-align: middle;"><input type="checkbox" class="group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-group-name="${doc.id}"></td>
                 <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-900">${doc.id}</div></td>
                 <td class="px-6 py-4 whitespace-nowrap"><span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${doc.data().isArchived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}">${doc.data().isArchived ? 'Archived' : 'Active'}</span></td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
