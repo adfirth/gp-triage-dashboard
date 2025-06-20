@@ -340,7 +340,6 @@
                     const row = document.createElement('tr');
                     const isArchived = doc.data().isArchived;
 
-                    // Use backticks for the entire template literal string
                     row.innerHTML = \`
                         <td class="p-4 align-middle">
                             <div class="flex items-center">
@@ -348,10 +347,10 @@
 </div\>
 </td\>
 <td class\="px\-6 py\-4 whitespace\-nowrap"\>
-<div class\="text\-sm font\-medium text\-gray\-900"\>\\$\{doc\.<11\>id\}</div\>
+<div class\="text\-sm font\-medium text\-gray\-900"\>\\$\{doc\.<14\>id\}</div\>
 </td\>
 <td class\="px\-6 py\-4 whitespace\-nowrap"\>
-<span class\="px\-2 inline\-flex text\-xs leading\-5 font\-semibold rounded\-full</11\> \\$\{isArchived ? 'bg\-gray\-100 text\-gray\-800' \: 'bg\-green\-100 text\-green\-800'\}"\>
+<span class\="px\-2 inline\-flex text\-xs leading\-5 font\-semibold rounded\-full</14\> \\$\{isArchived ? 'bg\-gray\-100 text\-gray\-800' \: 'bg\-green\-100 text\-green\-800'\}"\>
 \\$\{isArchived ? 'Archived' \: 'Active'\}
 </span\>
 </td\>
@@ -372,11 +371,11 @@
         }
         
         async function renderAdminPanel() {
-            appView.innerHTML = `<div class="card p-6"><h2 class="text-2xl font-bold text-gray-800">User Management</h2><p class="text-gray-600 mt-2">Approve new trainees to access the Triage Tool.</p><div id="user-list" class="mt-6">Loading...</div></div>`;
+            appView.innerHTML = \`<div class="card p-6"><h2 class="text-2xl font-bold text-gray-800">User Management</h2><p class="text-gray-600 mt-2">Approve new trainees to access the Triage Tool.</p><div id="user-list" class="mt-6">Loading...</div></div>\`;
             const userListContainer = document.getElementById('user-list');
             try {
                 const usersSnapshot = await db.collection('users').where('role', '==', 'trainee').get();
-                userListContainer.innerHTML = `<ul class="divide-y divide-gray-200"></ul>`;
+                userListContainer.innerHTML = \`<ul class="divide-y divide-gray-200"></ul>\`;
                 const list = userListContainer.querySelector('ul');
                 if (usersSnapshot.empty) {
                     list.innerHTML = '<li><p class="text-gray-500 py-4">No trainees have signed up yet.</p></li>';
