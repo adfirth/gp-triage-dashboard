@@ -73,7 +73,6 @@
 
 // STEP 3: SET UP THE DOM EVENT LISTENER
 document.addEventListener('DOMContentLoaded', () => {
-    // ---- THIS IS THE MISSING PART ----
     // This logic checks if Firebase is ready and then starts the app
     const checkFirebase = setInterval(() => {
         if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
@@ -88,37 +87,48 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }, 50);
-    // ---- END OF MISSING PART ----
 
-
-    // This single event listener now manages everything in the app-view
+    // This listener handles all button CLICKS within the main app view
     document.getElementById('app-view').addEventListener('click', (event) => {
         const target = event.target;
         
-        // Handle Manage button clicks
+        // Handle 'Manage' button clicks
         if (target.classList.contains('manage-btn') && target.dataset.groupName) {
             showScenarioList(target.dataset.groupName);
         }
 
-        // Handle the new "Archive Selected" button
-        if (target.id === 'archive-selected-btn') {
+        // Handle single 'Reinstate' button clicks
+        if (target.classList.contains('reinstate-btn') && target.dataset.groupName) {
+            reinstateMultipleGroups([target.dataset.groupName]);
+        }
+
+        // Handle the main 'Archive/Reinstate Selected' button
+        if (target.id === 'bulk-action-btn') {
             const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
                                         .map(cb => cb.dataset.groupName);
-            archiveMultipleGroups(selectedGroups);
+            
+            // Check which tab is active to decide which function to call
+            const archivedTab = document.getElementById('archived-tab');
+            if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
+                 reinstateMultipleGroups(selectedGroups);
+            } else {
+                 archiveMultipleGroups(selectedGroups);
+            }
         }
     });
 
-    // Add a separate listener for checkbox changes to update the UI
+    // This listener handles all checkbox CHANGES to update the UI state
     document.getElementById('app-view').addEventListener('change', (event) => {
         const target = event.target;
         const groupCheckboxes = document.querySelectorAll('.group-checkbox');
         const selectAllCheckbox = document.getElementById('select-all-groups');
-        const archiveButton = document.getElementById('archive-selected-btn');
+        const bulkActionButton = document.getElementById('bulk-action-btn');
 
-        if (!groupCheckboxes.length && !selectAllCheckbox && !archiveButton) return;
+        // If the elements don't exist on the current view, do nothing.
+        if (!selectAllCheckbox && !bulkActionButton) return;
 
         if (target.id === 'select-all-groups') {
-            // "Select All" was clicked, so update all other checkboxes
+            // 'Select All' was clicked, so update all other checkboxes
             groupCheckboxes.forEach(cb => cb.checked = target.checked);
         }
 
@@ -126,9 +136,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (target.classList.contains('group-checkbox') || target.id === 'select-all-groups') {
              const checkedCount = Array.from(document.querySelectorAll('.group-checkbox:checked')).length;
              
-             if (archiveButton) {
-                archiveButton.disabled = checkedCount === 0;
-                archiveButton.textContent = `Archive Selected (${checkedCount})`;
+             if (bulkActionButton) {
+                bulkActionButton.disabled = checkedCount === 0;
+                // Update text based on which tab is active
+                const archivedTab = document.getElementById('archived-tab');
+                if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
+                    bulkActionButton.textContent = `Reinstate Selected (${checkedCount})`;
+                } else {
+                    bulkActionButton.textContent = `Archive Selected (${checkedCount})`;
+                }
              }
 
              if (selectAllCheckbox) {
@@ -136,12 +152,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (checkedCount === 0) {
                     selectAllCheckbox.checked = false;
                     selectAllCheckbox.indeterminate = false;
-                } else if (checkedCount === groupCheckboxes.length) {
-                    selectAllCheckbox.checked = true;
-                    selectAllCheckbox.indeterminate = false;
-                } else {
+                } else if (checkedCount > 0 && checkedCount < groupCheckboxes.length) {
                     selectAllCheckbox.checked = false;
                     selectAllCheckbox.indeterminate = true;
+                } else if (checkedCount === groupCheckboxes.length && groupCheckboxes.length > 0) {
+                    selectAllCheckbox.checked = true;
+                    selectAllCheckbox.indeterminate = false;
                 }
              }
         }
@@ -822,7 +838,8 @@ async function renderGroupManagementView(filterArchived = false) {
                     sessionMode, 
                     availableClinicians,
                     slots, 
-                    scenarioStatus 
+                    scenarioStatus
+                    isArchived: false
                 });
                 showScenarioList(groupName);
             });
@@ -920,6 +937,33 @@ async function archiveGroup(groupName) {
     } catch (error) {
         console.error("Error archiving group: ", error);
         alert("An error occurred while archiving the group. Please try again.");
+    }
+}
+
+    async function reinstateMultipleGroups(groupIds) {
+    if (!groupIds || groupIds.length === 0) {
+        alert("No groups selected.");
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to reinstate ${groupIds.length} selected group(s)?`)) {
+        return;
+    }
+
+    const batch = db.batch();
+    groupIds.forEach(groupId => {
+        const sessionRef = db.collection('sessions').doc(groupId);
+        // Set the flag back to false to make the session active again
+        batch.update(sessionRef, { isArchived: false });
+    });
+
+    try {
+        await batch.commit();
+        alert(`${groupIds.length} group(s) have been successfully reinstated.`);
+        renderGroupManagementView(true); // Refresh the archived view
+    } catch (error) {
+        console.error("Error reinstating multiple groups: ", error);
+        alert("An error occurred while reinstating the groups.");
     }
 }
         
