@@ -820,18 +820,17 @@
             }
         }
         
-        function renderSessionSetup(groupName) {
+function renderSessionSetup(groupName) {
+            // ... (keep the existing code at the start of the function)
+
             const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
                 const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
+                // This new structure ensures alignment
                 return `
-                    <div class="relative flex items-start">
-                        <div class="flex h-5 items-center">
-                            <input id="${roleId}" name="clinician-role" type="checkbox" value="${role}" checked class="form-checkbox h-4 w-4 rounded">
-                        </div>
-                        <div class="ml-3 text-sm">
-                            <label for="${roleId}" class="font-medium text-gray-700">${role}</label>
-                        </div>
-                    </div>`;
+                    <label for="${roleId}" class="flex items-center space-x-2 cursor-pointer">
+                        <input id="${roleId}" name="clinician-role" type="checkbox" value="${role}" checked class="form-checkbox h-4 w-4 rounded">
+                        <span class="font-medium text-gray-700 text-sm">${role}</span>
+                    </label>`;
             }).join('');
 
             appView.innerHTML = `
