@@ -72,7 +72,7 @@
         .status-locked { background-color: #f59e0b; }
         .status-completed { background-color: #6b7280; }
         .case-card-completed { opacity: 0.6; background-color: #f3f4f6; }
-        .truncate-2-lines { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .truncate-2-lines { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-clamp: 2; }
         .form-input, .form-textarea, .form-select {
             border: 1px solid #d1d5db;
         }
@@ -109,6 +109,7 @@
         <div id="app-view" class="hidden w-full"></div>
     </main>
 
+    <script src="firebase-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
