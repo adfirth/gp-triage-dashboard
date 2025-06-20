@@ -71,98 +71,86 @@
         
         const appView = document.getElementById('app-view');
 
-// STEP 3: SET UP THE DOM EVENT LISTENER
-document.addEventListener('DOMContentLoaded', () => {
-    // This logic checks if Firebase is ready and then starts the app
-    const checkFirebase = setInterval(() => {
-        if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
-            try {
-                clearInterval(checkFirebase);
-                auth = firebase.auth();
-                db = firebase.firestore();
-                storage = firebase.storage();
-                main(); // The crucial call to start the application
-            } catch (e) {
-                console.error("Error initializing Firebase services:", e);
-            }
-        }
-    }, 50);
-
-    // This listener handles all button CLICKS within the main app view
-    document.getElementById('app-view').addEventListener('click', (event) => {
-        const target = event.target;
-        
-        // Handle 'Manage' button clicks
-        if (target.classList.contains('manage-btn') && target.dataset.groupName) {
-            showScenarioList(target.dataset.groupName);
-        }
-
-        // Handle single 'Reinstate' button clicks
-        if (target.classList.contains('reinstate-btn') && target.dataset.groupName) {
-            reinstateMultipleGroups([target.dataset.groupName]);
-        }
-
-        // Handle the main 'Archive/Reinstate Selected' button
-        if (target.id === 'bulk-action-btn') {
-            const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
-                                        .map(cb => cb.dataset.groupName);
-            
-            // Check which tab is active to decide which function to call
-            const archivedTab = document.getElementById('archived-tab');
-            if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
-                 reinstateMultipleGroups(selectedGroups);
-            } else {
-                 archiveMultipleGroups(selectedGroups);
-            }
-        }
-    });
-
-    // This listener handles all checkbox CHANGES to update the UI state
-    document.getElementById('app-view').addEventListener('change', (event) => {
-        const target = event.target;
-        const groupCheckboxes = document.querySelectorAll('.group-checkbox');
-        const selectAllCheckbox = document.getElementById('select-all-groups');
-        const bulkActionButton = document.getElementById('bulk-action-btn');
-
-        // If the elements don't exist on the current view, do nothing.
-        if (!selectAllCheckbox && !bulkActionButton) return;
-
-        if (target.id === 'select-all-groups') {
-            // 'Select All' was clicked, so update all other checkboxes
-            groupCheckboxes.forEach(cb => cb.checked = target.checked);
-        }
-
-        // Update the main button's state and count whenever any checkbox changes
-        if (target.classList.contains('group-checkbox') || target.id === 'select-all-groups') {
-             const checkedCount = Array.from(document.querySelectorAll('.group-checkbox:checked')).length;
-             
-             if (bulkActionButton) {
-                bulkActionButton.disabled = checkedCount === 0;
-                // Update text based on which tab is active
-                const archivedTab = document.getElementById('archived-tab');
-                if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
-                    bulkActionButton.textContent = `Reinstate Selected (${checkedCount})`;
-                } else {
-                    bulkActionButton.textContent = `Archive Selected (${checkedCount})`;
+        // STEP 3: SET UP THE DOM EVENT LISTENER
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkFirebase = setInterval(() => {
+                if (typeof firebase !== 'undefined' && firebase.app && typeof firebase.app === 'function' && firebase.apps.length > 0) {
+                    try {
+                        clearInterval(checkFirebase);
+                        auth = firebase.auth();
+                        db = firebase.firestore();
+                        storage = firebase.storage();
+                        main();
+                    } catch (e) {
+                        console.error("Error initializing Firebase services:", e);
+                    }
                 }
-             }
+            }, 50);
 
-             if (selectAllCheckbox) {
-                // If all are checked, the main box is checked. If none, it's unchecked. If some, it's indeterminate.
-                if (checkedCount === 0) {
-                    selectAllCheckbox.checked = false;
-                    selectAllCheckbox.indeterminate = false;
-                } else if (checkedCount > 0 && checkedCount < groupCheckboxes.length) {
-                    selectAllCheckbox.checked = false;
-                    selectAllCheckbox.indeterminate = true;
-                } else if (checkedCount === groupCheckboxes.length && groupCheckboxes.length > 0) {
-                    selectAllCheckbox.checked = true;
-                    selectAllCheckbox.indeterminate = false;
+            document.getElementById('app-view').addEventListener('click', (event) => {
+                const target = event.target;
+                
+                if (target.classList.contains('manage-btn') && target.dataset.groupName) {
+                    showScenarioList(target.dataset.groupName);
                 }
-             }
-        }
-    });
-});
+
+                if (target.classList.contains('reinstate-btn') && target.dataset.groupName) {
+                    reinstateMultipleGroups([target.dataset.groupName]);
+                }
+
+                if (target.id === 'bulk-action-btn') {
+                    const selectedGroups = Array.from(document.querySelectorAll('.group-checkbox:checked'))
+                                                .map(cb => cb.dataset.groupName);
+                    
+                    const archivedTab = document.getElementById('archived-tab');
+                    if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
+                         reinstateMultipleGroups(selectedGroups);
+                    } else {
+                         archiveMultipleGroups(selectedGroups);
+                    }
+                }
+            });
+
+            document.getElementById('app-view').addEventListener('change', (event) => {
+                const target = event.target;
+                const groupCheckboxes = document.querySelectorAll('.group-checkbox');
+                const selectAllCheckbox = document.getElementById('select-all-groups');
+                const bulkActionButton = document.getElementById('bulk-action-btn');
+
+                if (!selectAllCheckbox && !bulkActionButton) return;
+
+                if (target.id === 'select-all-groups') {
+                    groupCheckboxes.forEach(cb => cb.checked = target.checked);
+                }
+
+                if (target.classList.contains('group-checkbox') || target.id === 'select-all-groups') {
+                     const checkedCount = Array.from(document.querySelectorAll('.group-checkbox:checked')).length;
+                     
+                     if (bulkActionButton) {
+                        bulkActionButton.disabled = checkedCount === 0;
+                        const archivedTab = document.getElementById('archived-tab');
+                        if (archivedTab && archivedTab.classList.contains('border-indigo-600')) {
+                            bulkActionButton.textContent = `Reinstate Selected (${checkedCount})`;
+                        } else {
+                            bulkActionButton.textContent = `Archive Selected (${checkedCount})`;
+                        }
+                     }
+
+                     if (selectAllCheckbox) {
+                        if (checkedCount === 0) {
+                            selectAllCheckbox.checked = false;
+                            selectAllCheckbox.indeterminate = false;
+                        } else if (checkedCount > 0 && checkedCount < groupCheckboxes.length) {
+                            selectAllCheckbox.checked = false;
+                            selectAllCheckbox.indeterminate = true;
+                        } else if (checkedCount === groupCheckboxes.length && groupCheckboxes.length > 0) {
+                            selectAllCheckbox.checked = true;
+                            selectAllCheckbox.indeterminate = false;
+                        }
+                     }
+                }
+            });
+        });
         
         // STEP 4: APPLICATION FUNCTIONS
         function main() {
@@ -223,22 +211,21 @@ document.addEventListener('DOMContentLoaded', () => {
             if (viewEl) viewEl.classList.remove('hidden');
         }
 
-       function renderAppNavigationView() {
-    appView.innerHTML = '';
-    const tabs = {
-        // Change renderGroupSelection to our new function
-        sessions: { navId: 'nav-sessions', renderFunc: renderGroupManagementView }, 
-        scenarios: { navId: 'nav-scenarios', renderFunc: renderScenarioEditor },
-        admin: { navId: 'nav-admin', renderFunc: renderAdminPanel }
-    };
-    for (const key in tabs) {
-        const navElement = document.getElementById(tabs[key].navId);
-        navElement.className = (key === activeView) ? 'nav-active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm' : 'nav-inactive whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm';
-    }
-    if (tabs[activeView]) {
-        tabs[activeView].renderFunc();
-    }
-}
+        function renderAppNavigationView() {
+            appView.innerHTML = '';
+            const tabs = {
+                sessions: { navId: 'nav-sessions', renderFunc: renderGroupManagementView },
+                scenarios: { navId: 'nav-scenarios', renderFunc: renderScenarioEditor },
+                admin: { navId: 'nav-admin', renderFunc: renderAdminPanel }
+            };
+            for (const key in tabs) {
+                const navElement = document.getElementById(tabs[key].navId);
+                navElement.className = (key === activeView) ? 'nav-active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm' : 'nav-inactive whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm';
+            }
+            if (tabs[activeView]) {
+                tabs[activeView].renderFunc();
+            }
+        }
         
         function renderAuthForm() {
             const authView = document.getElementById('auth-view');
@@ -261,15 +248,126 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('denied-logout-btn').addEventListener('click', () => auth.signOut());
         }
 
-        function renderGroupSelection() {
-            appView.innerHTML = `<div class="text-center card p-8"><h2 class="text-2xl font-bold">Select or Create Group</h2><div class="mt-6 max-w-sm mx-auto"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md text-center" placeholder="e.g., Timperley-ST1-July"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Continue</button></div></div>`;
+        async function renderGroupManagementView(filterArchived = false) {
+            const activeTabClass = 'border-indigo-600 text-indigo-600';
+            const inactiveTabClass = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+
+            appView.innerHTML = `
+                <div class="card p-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">Session Management</h2>
+                            <p class="text-gray-600 mt-2">View and manage all training sessions.</p>
+                        </div>
+                        <div>
+                            <button id="bulk-action-btn" class="btn text-white" disabled>
+                                ${filterArchived ? 'Reinstate Selected (0)' : 'Archive Selected (0)'}
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mt-4 border-b border-gray-200">
+                        <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                            <button id="active-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${!filterArchived ? activeTabClass : inactiveTabClass}">Active Sessions</button>
+                            <button id="archived-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${filterArchived ? activeTabClass : inactiveTabClass}">Archived Sessions</button>
+                        </nav>
+                    </div>
+                    <div class="mt-2">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="p-4"><input type="checkbox" id="select-all-groups" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group Name</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="group-list-body" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading sessions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="mt-8 border-t pt-6">
+                         <h3 class="text-lg font-medium">Create New Session</h3>
+                         <div id="group-creation-container" class="mt-4"></div>
+                    </div>
+                </div>
+            `;
+
+            const bulkButton = document.getElementById('bulk-action-btn');
+            bulkButton.className = `btn ${filterArchived ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`;
+            
+            document.getElementById('active-tab').addEventListener('click', () => renderGroupManagementView(false));
+            document.getElementById('archived-tab').addEventListener('click', () => renderGroupManagementView(true));
+            
+            const creationContainer = document.getElementById('group-creation-container');
+            creationContainer.innerHTML = `<div class="max-w-sm"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md" placeholder="e.g., Timperley-ST1-August"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Create or Load Group</button></div>`;
             document.getElementById('view-dashboard-btn').addEventListener('click', async () => {
                 const groupName = document.getElementById('group-name-input').value.trim();
                 if (!groupName) return;
-                currentGroupName = groupName;
                 const sessionDoc = await db.collection('sessions').doc(groupName).get();
-                if (sessionDoc.exists) showScenarioList(groupName); else renderSessionSetup(groupName);
+                if (sessionDoc.exists) {
+                    showScenarioList(groupName); 
+                } else {
+                    renderSessionSetup(groupName);
+                }
             });
+
+            const tableBody = document.getElementById('group-list-body');
+            try {
+                let query;
+                if (filterArchived) {
+                    query = db.collection('sessions').where('isArchived', '==', true);
+                } else {
+                    query = db.collection('sessions').where('isArchived', '==', false);
+                }
+                const querySnapshot = await query.get();
+                
+                const allDocsSnapshot = await db.collection('sessions').get();
+                const missingDocs = allDocsSnapshot.docs.filter(doc => doc.data().isArchived === undefined);
+                
+                if (!filterArchived && querySnapshot.empty && missingDocs.length > 0) {
+                     tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-amber-700 bg-amber-50">You have active sessions that need updating. Please go to the 'Archived' tab to find and reinstate them.</td></tr>`;
+                     return;
+                }
+                
+                if (querySnapshot.empty) {
+                    tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No ${filterArchived ? 'archived' : 'active'} sessions found.</td></tr>`;
+                    return;
+                }
+
+                tableBody.innerHTML = '';
+                querySnapshot.forEach(doc => {
+                    const row = document.createElement('tr');
+                    const isArchived = doc.data().isArchived;
+
+                    row.innerHTML = `
+                        <td class="p-4 align-middle">
+                            <div class="flex items-center">
+                                <input type="checkbox" class="group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-group-name="<span class="math-inline">\{doc\.id\}"\>
+</div\>
+</td\>
+<td class\="px\-6 py\-4 whitespace\-nowrap"\>
+<div class\="text\-sm font\-medium text\-gray\-900"\></span>{doc.id}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isArchived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}">
+                                ${isArchived ? 'Archived' : 'Active'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            ${isArchived 
+                                ? `<button data-group-name="${doc.id}" class="reinstate-btn text-green-600 hover:text-green-900">Reinstate</button>`
+                                : `<button data-group-name="${doc.id}" class="manage-btn text-indigo-600 hover:text-indigo-900">Manage</button>`
+                            }
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+
+            } catch (error) {
+                console.error("Error loading sessions: ", error);
+                tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Could not load sessions.</td></tr>';
+            }
         }
         
         async function renderAdminPanel() {
@@ -287,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const userData = doc.data();
                     const li = document.createElement('li');
                     li.className = 'py-4 flex items-center justify-between';
-                    li.innerHTML = `<div><p class="font-medium">${userData.displayName}</p><p class="text-sm text-gray-500">${userData.email}</p></div>
+                    li.innerHTML = `<div><p class="font-medium"><span class="math-inline">\{userData\.displayName\}</p\><p class\="text\-sm text\-gray\-500"\></span>{userData.email}</p></div>
                                     <div>${userData.status === 'approved' ? '<span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 rounded-full">Approved</span>' : `<button data-uid="${doc.id}" class="btn btn-primary text-xs approve-btn">Approve</button>`}</div>`;
                     list.appendChild(li);
                 });
@@ -301,123 +399,60 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-async function renderGroupManagementView(filterArchived = false) {
-    const activeTabClass = 'border-indigo-600 text-indigo-600';
-    const inactiveTabClass = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
-
-    appView.innerHTML = `
-        <div class="card p-6">
-            <div class="flex justify-between items-center">
-                <div>
-                    <h2 class="text-2xl font-bold text-gray-800">Session Management</h2>
-                    <p class="text-gray-600 mt-2">View and manage all training sessions.</p>
-                </div>
-                <div>
-                    <button id="bulk-action-btn" class="btn text-white" disabled>
-                        ${filterArchived ? 'Reinstate Selected (0)' : 'Archive Selected (0)'}
-                    </button>
-                </div>
-            </div>
-            <div class="mt-4 border-b border-gray-200">
-                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                    <button id="active-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${!filterArchived ? activeTabClass : inactiveTabClass}">Active Sessions</button>
-                    <button id="archived-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${filterArchived ? activeTabClass : inactiveTabClass}">Archived Sessions</button>
-                </nav>
-            </div>
-            <div class="mt-2">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="p-4"><input type="checkbox" id="select-all-groups" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"></th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group Name</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="group-list-body" class="bg-white divide-y divide-gray-200">
-                        <tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">Loading sessions...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="mt-8 border-t pt-6">
-                 <h3 class="text-lg font-medium">Create New Session</h3>
-                 <div id="group-creation-container" class="mt-4"></div>
-            </div>
-        </div>
-    `;
-
-    const bulkButton = document.getElementById('bulk-action-btn');
-    bulkButton.className = `btn ${filterArchived ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-blue-600 text-white hover:bg-blue-700'}`;
-    
-    document.getElementById('active-tab').addEventListener('click', () => renderGroupManagementView(false));
-    document.getElementById('archived-tab').addEventListener('click', () => renderGroupManagementView(true));
-    
-    const creationContainer = document.getElementById('group-creation-container');
-    creationContainer.innerHTML = `<div class="max-w-sm"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md" placeholder="e.g., Timperley-ST1-August"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Create or Load Group</button></div>`;
-    document.getElementById('view-dashboard-btn').addEventListener('click', async () => {
-        const groupName = document.getElementById('group-name-input').value.trim();
-        if (!groupName) return;
-        const sessionDoc = await db.collection('sessions').doc(groupName).get();
-        if (sessionDoc.exists) {
-            showScenarioList(groupName); 
-        } else {
-            renderSessionSetup(groupName);
-        }
-    });
-
-    const tableBody = document.getElementById('group-list-body');
-    try {
-        const query = db.collection('sessions').where('isArchived', '==', filterArchived);
-        const querySnapshot = await query.get();
-        
-        const allDocsSnapshot = await db.collection('sessions').get();
-        const missingDocs = allDocsSnapshot.docs.filter(doc => doc.data().isArchived === undefined);
-        
-        if (!filterArchived && querySnapshot.empty && missingDocs.length > 0) {
-             tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-amber-700 bg-amber-50">You have active sessions that need updating. Please go to the 'Archived' tab to find and reinstate them.</td></tr>`;
-             return;
-        }
-        
-        if (querySnapshot.empty) {
-            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No ${filterArchived ? 'archived' : 'active'} sessions found.</td></tr>`;
-            return;
-        }
-
-        tableBody.innerHTML = '';
-        querySnapshot.forEach(doc => {
-            const row = document.createElement('tr');
-            const isArchived = doc.data().isArchived;
-
-            // ** FIX IS HERE: Replaced all instances of 'groupName' with 'doc.id' **
-            row.innerHTML = `
-                <td class="p-4">
-                    <div class="flex items-center">
-                        <input type="checkbox" class="group-checkbox h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" data-group-name="${doc.id}">
+        function renderScenarioEditor() {
+            editingScenarioId = null; 
+            appView.innerHTML = `
+                <div class="card p-6 w-full">
+                    <div class="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800">Scenario Editor</h2>
+                            <p class="text-gray-600 mt-2">Add, edit, or delete clinical scenarios.</p>
+                        </div>
+                        <button id="add-scenario-btn" class="btn btn-primary">Add New Scenario</button>
                     </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900">${doc.id}</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${isArchived ? 'bg-gray-100 text-gray-800' : 'bg-green-100 text-green-800'}">
-                        ${isArchived ? 'Archived' : 'Active'}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    ${isArchived 
-                        ? `<button data-group-name="${doc.id}" class="reinstate-btn text-green-600 hover:text-green-900">Reinstate</button>`
-                        : `<button data-group-name="${doc.id}" class="manage-btn text-indigo-600 hover:text-indigo-900">Manage</button>`
-                    }
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
+                    <div id="scenario-editor-list" class="mt-6 space-y-4"></div>
+                    <div class="mt-8 border-t-2 border-gray-200 pt-6">
+                        <h3 class="text-lg font-semibold text-gray-800">Bulk Import Scenarios</h3>
+                        <p class="text-sm text-gray-500 mt-1">Select a properly formatted JSON file to import multiple scenarios at once.</p>
+                        <input type="file" id="import-file-input" accept=".json" class="mt-3 block w-full max-w-xs text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100 cursor-pointer">
+                    </div>
+                </div>`;
 
-    } catch (error) {
-        console.error("Error loading sessions: ", error);
-        tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-red-500">Could not load sessions.</td></tr>';
-    }
-}
+            document.getElementById('add-scenario-btn').addEventListener('click', () => renderScenarioForm());
+            document.getElementById('import-file-input').addEventListener('change', handleFileImport);
+
+            const listContainer = document.getElementById('scenario-editor-list');
+            listContainer.innerHTML = '';
+            if (!scenarios || scenarios.length === 0) {
+                listContainer.innerHTML = '<p class="text-gray-500">No scenarios found in the database.</p>';
+                return;
+            }
+
+            scenarios.forEach(scenario => {
+                if (!scenario) return; 
+
+                const item = document.createElement('div');
+                item.className = 'p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between bg-white';
+                item.innerHTML = `<div class="flex-grow"><p class="font-bold">Case ${scenario.id}: ${scenario.name}, <span class="math-inline">\{scenario\.age\}</p\><p class\="text\-sm text\-gray\-600 mt\-1 truncate\-2\-lines"\></span>{scenario.problem}</p></div><div class="flex-shrink-0 flex space-x-2 mt-4 sm:mt-0 sm:ml-4"><button data-id="<span class="math-inline">\{scenario\.firestoreId\}" class\="btn text\-sm bg\-gray\-200 hover\:bg\-gray\-300 edit\-btn"\>Edit</button\><button data\-id\="</span>{scenario.firestoreId}" data-name="Case ${scenario.id}: ${scenario.name}" class="btn text-sm bg-red-100 text-red-700 hover:bg-red-200 delete-btn">Delete</button></div>`;
+                
+                item.querySelector('.edit-btn').addEventListener('click', (e) => {
+                    const firestoreId = e.target.dataset.id;
+                    const scenarioToEdit = scenarios.find(s => s.firestoreId === firestoreId);
+                    if (scenarioToEdit) {
+                        renderScenarioForm(scenarioToEdit);
+                    }
+                });
+
+                item.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    const firestoreId = e.target.dataset.id;
+                    const scenarioName = e.target.dataset.name;
+                    deleteScenario(firestoreId, scenarioName);
+                });
+
+                listContainer.appendChild(item);
+            });
+        }
+        
         function renderScenarioForm(scenarioToEdit = null) {
             const isEditing = scenarioToEdit !== null;
             editingScenarioId = isEditing ? scenarioToEdit.firestoreId : null;
@@ -425,10 +460,10 @@ async function renderGroupManagementView(filterArchived = false) {
             const buttonText = isEditing ? "Save Changes" : "Save Scenario";
             let existingAttachmentHtml = '';
             if (isEditing && typeof scenarioToEdit.attachments === 'string' && scenarioToEdit.attachments.length > 0) {
-                existingAttachmentHtml = `<div class="text-xs text-gray-500 mt-2">Current file: <a href="${scenarioToEdit.attachments}" target="_blank" class="underline">${decodeURIComponent(scenarioToEdit.attachments.split('%2F').pop().split('?')[0])}</a></div>`;
+                existingAttachmentHtml = `<div class="text-xs text-gray-500 mt-2">Current file: <a href="<span class="math-inline">\{scenarioToEdit\.attachments\}" target\="\_blank" class\="underline"\></span>{decodeURIComponent(scenarioToEdit.attachments.split('%2F').pop().split('?')[0])}</a></div>`;
             }
 
-            appView.innerHTML = `<div class="card p-8 max-w-3xl mx-auto"><h2 class="text-2xl font-bold text-gray-800">${title}</h2><form id="scenario-form" class="mt-6 space-y-6"><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Case Details</legend><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="id" class="block text-sm font-medium text-gray-700">Case ID (unique number)</label><input type="number" id="id" class="mt-1 p-2 w-full border rounded-md bg-gray-100" readonly required></div><div><label for="name" class="block text-sm font-medium text-gray-700">Patient Name</label><input type="text" id="name" class="mt-1 p-2 w-full border rounded-md" required></div><div><label for="age" class="block text-sm font-medium text-gray-700">Patient Age</label><input type="number" id="age" class="mt-1 p-2 w-full border rounded-md" required></div></div><div><label for="problem" class="block text-sm font-medium text-gray-700">Describe the problem</label><textarea id="problem" rows="4" class="mt-1 p-2 w-full border rounded-md" required></textarea></div><div><label for="attachments" class="block text-sm font-medium text-gray-700">Attach a photo (optional)</label><input type="file" id="attachments" accept="image/*" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"/>${existingAttachmentHtml}</div><div><label for="durationAndProgression" class="block text-sm font-medium text-gray-700">How long has it been going on for? Is it getting better or worse?</label><input type="text" id="durationAndProgression" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="selfHelp" class="block text-sm font-medium text-gray-700">Have you tried anything to help?</label><input type="text" id="selfHelp" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="worried" class="block text-sm font-medium text-gray-700">Is there anything you're particularly worried about?</label><input type="text" id="worried" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Contact & Expectations</legend><div><label for="expectations" class="block text-sm font-medium text-gray-700">What are your expectations for what we can do?</label><input type="text" id="expectations" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="contactMethod" class="block text-sm font-medium text-gray-700">Contact method preference (e.g., Text, Phone Call)</label><input type="text" id="contactMethod" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="preferredClinician" class="block text-sm font-medium text-gray-700">Preferred clinician to contact them</label><input type="text" id="preferredClinician" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Model Answer</legend><p class="text-sm text-gray-500">Set the correct triage outcome for this case. For accepted answers, enter values separated by a comma (e.g., Red,Amber).</p><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Urgency</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-urgency-accepted" placeholder="Accepted urgencies (comma-separated)" class="p-2 border rounded-md"><input type="text" id="model-urgency-feedback" placeholder="Feedback for urgency" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Consultation Type</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-consultationType-accepted" placeholder="Accepted types (e.g., Face-to-face)" class="p-2 border rounded-md"><input type="text" id="model-consultationType-feedback" placeholder="Feedback for consultation type" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Required With</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-requiredWith-accepted" placeholder="Accepted clinicians (e.g., GP, ANP)" class="p-2 border rounded-md"><input type="text" id="model-requiredWith-feedback" placeholder="Feedback for required with" class="p-2 border rounded-md"></div></div></fieldset><p id="scenario-error" class="text-red-500 text-sm hidden"></p><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button><button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button></div></form></div>`;
+            appView.innerHTML = `<div class="card p-8 max-w-3xl mx-auto"><h2 class="text-2xl font-bold text-gray-800"><span class="math-inline">\{title\}</h2\><form id\="scenario\-form" class\="mt\-6 space\-y\-6"\><fieldset class\="space\-y\-4 border\-t pt\-6"\><legend class\="text\-lg font\-semibold text\-gray\-700"\>Case Details</legend\><div class\="grid grid\-cols\-1 md\:grid\-cols\-3 gap\-4"\><div\><label for\="id" class\="block text\-sm font\-medium text\-gray\-700"\>Case ID \(unique number\)</label\><input type\="number" id\="id" class\="mt\-1 p\-2 w\-full border rounded\-md bg\-gray\-100" readonly required\></div\><div\><label for\="name" class\="block text\-sm font\-medium text\-gray\-700"\>Patient Name</label\><input type\="text" id\="name" class\="mt\-1 p\-2 w\-full border rounded\-md" required\></div\><div\><label for\="age" class\="block text\-sm font\-medium text\-gray\-700"\>Patient Age</label\><input type\="number" id\="age" class\="mt\-1 p\-2 w\-full border rounded\-md" required\></div\></div\><div\><label for\="problem" class\="block text\-sm font\-medium text\-gray\-700"\>Describe the problem</label\><textarea id\="problem" rows\="4" class\="mt\-1 p\-2 w\-full border rounded\-md" required\></textarea\></div\><div\><label for\="attachments" class\="block text\-sm font\-medium text\-gray\-700"\>Attach a photo \(optional\)</label\><input type\="file" id\="attachments" accept\="image/\*" class\="mt\-1 block w\-full text\-sm text\-gray\-500 file\:mr\-4 file\:py\-2 file\:px\-4 file\:rounded\-full file\:border\-0 file\:text\-sm file\:font\-semibold file\:bg\-indigo\-50 file\:text\-indigo\-700 hover\:file\:bg\-indigo\-100"/\></span>{existingAttachmentHtml}</div><div><label for="durationAndProgression" class="block text-sm font-medium text-gray-700">How long has it been going on for? Is it getting better or worse?</label><input type="text" id="durationAndProgression" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="selfHelp" class="block text-sm font-medium text-gray-700">Have you tried anything to help?</label><input type="text" id="selfHelp" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="worried" class="block text-sm font-medium text-gray-700">Is there anything you're particularly worried about?</label><input type="text" id="worried" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Contact & Expectations</legend><div><label for="expectations" class="block text-sm font-medium text-gray-700">What are your expectations for what we can do?</label><input type="text" id="expectations" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="contactMethod" class="block text-sm font-medium text-gray-700">Contact method preference (e.g., Text, Phone Call)</label><input type="text" id="contactMethod" class="mt-1 p-2 w-full border rounded-md"></div><div><label for="preferredClinician" class="block text-sm font-medium text-gray-700">Preferred clinician to contact them</label><input type="text" id="preferredClinician" class="mt-1 p-2 w-full border rounded-md"></div></fieldset><fieldset class="space-y-4 border-t pt-6"><legend class="text-lg font-semibold text-gray-700">Model Answer</legend><p class="text-sm text-gray-500">Set the correct triage outcome for this case. For accepted answers, enter values separated by a comma (e.g., Red,Amber).</p><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Urgency</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-urgency-accepted" placeholder="Accepted urgencies (comma-separated)" class="p-2 border rounded-md"><input type="text" id="model-urgency-feedback" placeholder="Feedback for urgency" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Consultation Type</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-consultationType-accepted" placeholder="Accepted types (e.g., Face-to-face)" class="p-2 border rounded-md"><input type="text" id="model-consultationType-feedback" placeholder="Feedback for consultation type" class="p-2 border rounded-md"></div></div><div class="p-4 bg-gray-50 rounded-lg"><label class="block text-sm font-medium text-gray-900">Required With</label><div class="mt-2 grid grid-cols-1 md:grid-cols-2 gap-4"><input type="text" id="model-requiredWith-accepted" placeholder="Accepted clinicians (e.g., GP, ANP)" class="p-2 border rounded-md"><input type="text" id="model-requiredWith-feedback" placeholder="Feedback for required with" class="p-2 border rounded-md"></div></div></fieldset><p id="scenario-error" class="text-red-500 text-sm hidden"></p><div class="flex justify-end gap-4 pt-4"><button type="button" id="cancel-scenario-btn" class="btn bg-gray-200 hover:bg-gray-300">Cancel</button><button type="submit" id="save-scenario-btn" class="btn btn-primary">${buttonText}</button></div></form></div>`;
             
             if (isEditing) {
                 document.getElementById('id').value = scenarioToEdit.id || '';
@@ -472,7 +507,7 @@ async function renderGroupManagementView(filterArchived = false) {
             let attachmentUrl = "";
             if (file) {
                 saveBtn.textContent = 'Uploading File...';
-                const filePath = `scenario-attachments/${Date.now()}-${file.name}`;
+                const filePath = `scenario-attachments/<span class="math-inline">\{Date\.now\(\)\}\-</span>{file.name}`;
                 const storageRef = storage.ref(filePath);
                 try {
                     const uploadTask = await storageRef.put(file);
@@ -553,7 +588,7 @@ async function renderGroupManagementView(filterArchived = false) {
             try {
                 if (file) {
                     saveBtn.textContent = 'Uploading File...';
-                    const filePath = `scenario-attachments/${Date.now()}-${file.name}`;
+                    const filePath = `scenario-attachments/<span class="math-inline">\{Date\.now\(\)\}\-</span>{file.name}`;
                     const storageRef = storage.ref(filePath);
                     const uploadTask = await storageRef.put(file);
                     updatedData.attachments = await uploadTask.ref.getDownloadURL();
@@ -634,197 +669,212 @@ async function renderGroupManagementView(filterArchived = false) {
             };
             reader.readAsText(file);
         }
-
+        
         async function archiveMultipleGroups(groupIds) {
-    if (!groupIds || groupIds.length === 0) {
-        alert("No groups selected.");
-        return;
-    }
+            if (!groupIds || groupIds.length === 0) {
+                alert("No groups selected.");
+                return;
+            }
 
-    if (!confirm(`Are you sure you want to archive ${groupIds.length} selected group(s)?`)) {
-        return;
-    }
+            if (!confirm(`Are you sure you want to archive ${groupIds.length} selected group(s)?`)) {
+                return;
+            }
 
-    // A "Write Batch" lets us perform multiple operations as a single request
-    const batch = db.batch();
+            const batch = db.batch();
 
-    groupIds.forEach(groupId => {
-        const sessionRef = db.collection('sessions').doc(groupId);
-        batch.update(sessionRef, { isArchived: true });
-    });
+            groupIds.forEach(groupId => {
+                const sessionRef = db.collection('sessions').doc(groupId);
+                batch.update(sessionRef, { isArchived: true });
+            });
 
-    try {
-        await batch.commit(); // Commit all the updates at once
-        alert(`${groupIds.length} group(s) have been successfully archived.`);
-        renderGroupManagementView(); // Refresh the view
-    } catch (error) {
-        console.error("Error archiving multiple groups: ", error);
-        alert("An error occurred while archiving the groups.");
-    }
-}
-        
-        function renderSessionSetup(groupName) {
-    const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
-        const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
-        return `
-            <div class="relative flex items-start">
-                <div class="flex h-5 items-center">
-                    <input id="${roleId}" name="clinician-role" type="checkbox" value="${role}" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                </div>
-                <div class="ml-3 text-sm">
-                    <label for="${roleId}" class="font-medium text-gray-700">${role}</label>
-                </div>
-            </div>`;
-    }).join('');
-
-    appView.innerHTML = `
-        <div id="session-setup-view" class="card p-8">
-            <h2 class="text-2xl font-bold text-gray-800">Set Up New Session</h2>
-            <p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
-            
-            <div class="mt-4">
-                <label class="flex items-center">
-                    <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                    <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
-                </label>
-            </div>
-
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <fieldset>
-                    <legend class="text-base font-medium text-gray-900">Session Mode</legend>
-                    <div class="mt-4 space-y-4">
-                        <div class="flex items-center">
-                            <input id="mode-training" name="session-mode" type="radio" value="training" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                            <label for="mode-training" class="ml-3 block text-sm font-medium text-gray-700">Training Mode <span class="text-gray-500 font-normal">(Immediate Feedback)</span></label>
-                        </div>
-                        <div class="flex items-center">
-                            <input id="mode-simulation" name="session-mode" type="radio" value="simulation" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                            <label for="mode-simulation" class="ml-3 block text-sm font-medium text-gray-700">Simulation Mode <span class="text-gray-500 font-normal">(No Trainee Feedback)</span></label>
-                        </div>
-                    </div>
-                </fieldset>
-            </div>
-
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <fieldset>
-                    <legend class="text-base font-medium text-gray-900">Available Clinicians</legend>
-                    <div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        ${clinicianCheckboxesHtml}
-                    </div>
-                </fieldset>
-            </div>
-            
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <h3 class="text-base font-medium text-gray-900">Appointment Slots</h3>
-                <div id="slot-inputs" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"></div>
-            </div>
-            
-            <div class="mt-8 flex justify-end gap-4">
-                <button id="back-to-group-selection-btn" class="btn bg-gray-200 hover:bg-gray-300">Back</button>
-                <button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button>
-            </div>
-        </div>`;
-
-    const slotInputsContainer = document.getElementById('slot-inputs');
-    const urgencies = ['Red', 'Amber', 'Green'];
-    const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
-    
-    urgencies.forEach(urgency => types.forEach(type => {
-        const safeTypeId = type.replace(/[\s/]+/g, '-');
-        const id = `slot-${urgency}-${safeTypeId}`;
-        const defaultVal = 50;
-        slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
-    }));
-
-    document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupManagementView);
-    
-    document.getElementById('start-session-btn').addEventListener('click', async () => {
-        const hubMode = document.getElementById('hub-mode-checkbox').checked;
-        const sessionMode = document.querySelector('input[name="session-mode"]:checked').value;
-        
-        const availableClinicians = Array.from(document.querySelectorAll('input[name="clinician-role"]:checked')).map(cb => cb.value);
-
-        if (availableClinicians.length === 0) {
-            alert("Please select at least one available clinician.");
-            return;
+            try {
+                await batch.commit();
+                alert(`${groupIds.length} group(s) have been successfully archived.`);
+                renderGroupManagementView();
+            } catch (error) {
+                console.error("Error archiving multiple groups: ", error);
+                alert("An error occurred while archiving the groups.");
+            }
         }
 
-        const slots = {};
-        urgencies.forEach(urgency => types.forEach(type => {
-            const safeTypeId = type.replace(/[\s/]+/g, '-');
-            const inputId = `slot-${urgency}-${safeTypeId}`;
-            const dbKey = `${urgency}|${safeTypeId}`;
-            slots[dbKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
-        }));
+        async function reinstateMultipleGroups(groupIds) {
+            if (!groupIds || groupIds.length === 0) {
+                alert("No groups selected.");
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to reinstate ${groupIds.length} selected group(s)?`)) {
+                return;
+            }
+
+            const batch = db.batch();
+            groupIds.forEach(groupId => {
+                const sessionRef = db.collection('sessions').doc(groupId);
+                batch.update(sessionRef, { isArchived: false });
+            });
+
+            try {
+                await batch.commit();
+                alert(`${groupIds.length} group(s) have been successfully reinstated.`);
+                renderGroupManagementView(true);
+            } catch (error) {
+                console.error("Error reinstating multiple groups: ", error);
+                alert("An error occurred while reinstating the groups.");
+            }
+        }
         
-        const scenarioStatus = {};
-        if (hubMode) {
-            scenarios.forEach(s => {
-                if(s && s.id) {
-                    scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null };
+        function renderSessionSetup(groupName) {
+            const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
+                const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
+                return `
+                    <div class="relative flex items-start">
+                        <div class="flex h-5 items-center">
+                            <input id="<span class="math-inline">\{roleId\}" name\="clinician\-role" type\="checkbox" value\="</span>{role}" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="<span class="math-inline">\{roleId\}" class\="font\-medium text\-gray\-700"\></span>{role}</label>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            appView.innerHTML = `
+                <div id="session-setup-view" class="card p-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Set Up New Session</h2>
+                    <p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
+                    
+                    <div class="mt-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
+                        </label>
+                    </div>
+
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <fieldset>
+                            <legend class="text-base font-medium text-gray-900">Session Mode</legend>
+                            <div class="mt-4 space-y-4">
+                                <div class="flex items-center">
+                                    <input id="mode-training" name="session-mode" type="radio" value="training" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="mode-training" class="ml-3 block text-sm font-medium text-gray-700">Training Mode <span class="text-gray-500 font-normal">(Immediate Feedback)</span></label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="mode-simulation" name="session-mode" type="radio" value="simulation" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="mode-simulation" class="ml-3 block text-sm font-medium text-gray-700">Simulation Mode <span class="text-gray-500 font-normal">(No Trainee Feedback)</span></label>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <fieldset>
+                            <legend class="text-base font-medium text-gray-900">Available Clinicians</legend>
+                            <div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                ${clinicianCheckboxesHtml}
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <h3 class="text-base font-medium text-gray-900">Appointment Slots</h3>
+                        <div id="slot-inputs" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"></div>
+                    </div>
+                    
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button id="back-to-group-selection-btn" class="btn bg-gray-200 hover:bg-gray-300">Back</button>
+                        <button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button>
+                    </div>
+                </div>`;
+
+            const slotInputsContainer = document.getElementById('slot-inputs');
+            const urgencies = ['Red', 'Amber', 'Green'];
+            const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
+            
+            urgencies.forEach(urgency => types.forEach(type => {
+                const safeTypeId = type.replace(/[\s/]+/g, '-');
+                const id = `slot-<span class="math-inline">\{urgency\}\-</span>{safeTypeId}`;
+                const defaultVal = 50;
+                slotInputsContainer.innerHTML += `<div><label for="<span class="math-inline">\{id\}" class\="block text\-sm font\-medium text\-gray\-700"\></span>{urgency} - <span class="math-inline">\{type\}</label\><input type\="number" id\="</span>{id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
+            }));
+
+            document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupManagementView);
+            
+            document.getElementById('start-session-btn').addEventListener('click', async () => {
+                const hubMode = document.getElementById('hub-mode-checkbox').checked;
+                const sessionMode = document.querySelector('input[name="session-mode"]:checked').value;
+                
+                const availableClinicians = Array.from(document.querySelectorAll('input[name="clinician-role"]:checked')).map(cb => cb.value);
+
+                if (availableClinicians.length === 0) {
+                    alert("Please select at least one available clinician.");
+                    return;
                 }
+
+                const slots = {};
+                urgencies.forEach(urgency => types.forEach(type => {
+                    const safeTypeId = type.replace(/[\s/]+/g, '-');
+                    const inputId = `slot-<span class="math-inline">\{urgency\}\-</span>{safeTypeId}`;
+                    const dbKey = `<span class="math-inline">\{urgency\}\|</span>{safeTypeId}`;
+                    slots[dbKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
+                }));
+                
+                const scenarioStatus = {};
+                if (hubMode) {
+                    scenarios.forEach(s => {
+                        if(s && s.id) {
+                            scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null };
+                        }
+                    });
+                }
+                
+                await db.collection('sessions').doc(groupName).set({ 
+                    groupName, 
+                    hubMode, 
+                    sessionMode, 
+                    availableClinicians,
+                    slots, 
+                    scenarioStatus,
+                    isArchived: false
+                });
+                showScenarioList(groupName);
             });
         }
         
-        await db.collection('sessions').doc(groupName).set({ 
-            groupName, 
-            hubMode, 
-            sessionMode, 
-            availableClinicians,
-            slots, 
-            scenarioStatus, // <-- COMMA ADDED HERE
-            isArchived: false
-        });
-        showScenarioList(groupName);
-    });
-}
-        
         function showScenarioList(groupName) {
-    // Add a new button next to the "Clear" button
-    appView.innerHTML = `<div id="scenario-list-view">
-        <div class="sm:flex sm:items-center sm:justify-between mb-4">
-            <div>
-                <button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button>
-            </div>
-            <div class="mt-4 sm:mt-0 flex space-x-2">
-                <button id="archive-btn" class="btn bg-blue-600 text-white hover:bg-blue-700 text-sm">Archive Group</button>
-                <button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button>
-            </div>
-        </div>
-        <div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
-    </div>`;
+            appView.innerHTML = `<div id="scenario-list-view"><div class="sm:flex sm:items-center sm:justify-between mb-4"><div><button id="back-to-management-btn" class="btn bg-gray-200 text-sm">← Back to Session List</button></div><div class="mt-4 sm:mt-0 flex space-x-2"><button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button></div></div><div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
+            document.getElementById('back-to-management-btn').addEventListener('click', () => { if (sessionListener) sessionListener(); renderGroupManagementView(); });
+            document.getElementById('clear-btn').addEventListener('click', () => clearGroupData(groupName));
+            
+            const container = document.getElementById('scenario-list-container');
+            container.innerHTML = '<p class="col-span-full">Loading scenario statuses...</p>';
+            
+            if (sessionListener) sessionListener();
 
-    document.getElementById('back-to-group-btn').addEventListener('click', () => { if (sessionListener) sessionListener(); renderGroupSelection(); });
-    document.getElementById('clear-btn').addEventListener('click', () => clearGroupData(groupName));
-    // Add the event listener for the new archive button
-    document.getElementById('archive-btn').addEventListener('click', () => archiveGroup(groupName));
-
-    const container = document.getElementById('scenario-list-container');
-    container.innerHTML = '<p class="col-span-full">Loading scenario statuses...</p>';
-    if (sessionListener) sessionListener();
-    sessionListener = db.collection('sessions').doc(groupName).onSnapshot(doc => {
-        if (!doc.exists) { container.innerHTML = '<p class="col-span-full text-red-500">Session deleted.</p>'; return; }
-        const sessionData = doc.data();
-        container.innerHTML = '';
-        scenarios.forEach(scenario => {
-            const card = document.createElement('div');
-            let statusHtml = '';
-            let cardClass = 'bg-white hover:bg-indigo-50 cursor-pointer';
-            if (sessionData.hubMode && sessionData.scenarioStatus && sessionData.scenarioStatus[scenario.id]) {
-                const statusInfo = sessionData.scenarioStatus[scenario.id];
-                let statusText = 'Available';
-                let statusClass = 'status-available';
-                if (statusInfo.status === 'locked') { statusText = `Locked by ${statusInfo.lockedBy}`; statusClass = 'status-locked'; } 
-                else if (statusInfo.status === 'completed') { statusText = `Completed by ${statusInfo.completedBy}`; statusClass = 'status-completed'; cardClass = 'case-card-completed'; }
-                statusHtml = `<div class="flex items-center mt-2 text-xs"><span class="status-dot ${statusClass}"></span>${statusText}</div>`;
-            }
-            card.className = `p-4 rounded-lg shadow hover:shadow-lg transition ${cardClass}`;
-            card.innerHTML = `<h3 class="font-bold text-gray-800">Case ${scenario.id}: ${scenario.name}</h3><p class="text-sm text-gray-600 mt-1 truncate-2-lines">${scenario.problem}</p>${statusHtml}`;
-            card.addEventListener('click', () => showDecisionDetails(scenario.id, `Case ${scenario.id}: ${scenario.name}`));
-            container.appendChild(card);
-        });
-    });
-}
+            sessionListener = db.collection('sessions').doc(groupName).onSnapshot(doc => {
+                if (!doc.exists) { 
+                    container.innerHTML = '<p class="col-span-full text-red-500">Session deleted.</p>'; 
+                    return; 
+                }
+                const sessionData = doc.data();
+                container.innerHTML = '';
+                scenarios.forEach(scenario => {
+                    const card = document.createElement('div');
+                    let statusHtml = '';
+                    let cardClass = 'bg-white hover:bg-indigo-50 cursor-pointer';
+                    if (sessionData.hubMode && sessionData.scenarioStatus && sessionData.scenarioStatus[scenario.id]) {
+                        const statusInfo = sessionData.scenarioStatus[scenario.id];
+                        let statusText = 'Available';
+                        let statusClass = 'status-available';
+                        if (statusInfo.status === 'locked') { statusText = `Locked by ${statusInfo.lockedBy}`; statusClass = 'status-locked'; } 
+                        else if (statusInfo.status === 'completed') { statusText = `Completed by ${statusInfo.completedBy}`; statusClass = 'status-completed'; cardClass = 'case-card-completed'; }
+                        statusHtml = `<div class="flex items-center mt-2 text-xs"><span class="status-dot <span class="math-inline">\{statusClass\}"\></span\></span>{statusText}</div>`;
+                    }
+                    card.className = `p-4 rounded-lg shadow hover:shadow-lg transition ${cardClass}`;
+                    card.innerHTML = `<h3 class="font-bold text-gray-800">Case ${scenario.id}: <span class="math-inline">\{scenario\.name\}</h3\><p class\="text\-sm text\-gray\-600 mt\-1 truncate\-2\-lines"\></span>{scenario.problem}</p>${statusHtml}`;
+                    card.addEventListener('click', () => showDecisionDetails(scenario.id, `Case ${scenario.id}: ${scenario.name}`));
+                    container.appendChild(card);
+                });
+            });
+        }
 
         function showDecisionDetails(scenarioId, scenarioName) {
             if (sessionListener) sessionListener();
@@ -839,67 +889,11 @@ async function renderGroupManagementView(filterArchived = false) {
                         const decision = doc.data();
                         const card = document.createElement('div');
                         card.className = `bg-white rounded-lg shadow p-5 border-l-8 urgency-${decision.urgency}`;
-                        card.innerHTML = `<div class="flex justify-between items-start"><h3 class="font-bold text-lg">${decision.scenario.name}, ${decision.scenario.age}</h3><span class="text-xs font-bold uppercase px-2 py-1 rounded-full bg-gray-200 text-gray-700">${decision.gpName}</span></div><div class="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center text-sm"><div><span class="block font-semibold text-gray-500 text-xs">URGENCY</span><span class="font-bold text-${decision.urgency.toLowerCase()}-600">${decision.urgency}</span></div><div><span class="block font-semibold text-gray-500 text-xs">TYPE</span><span class="font-bold">${decision.consultationType}</span></div><div><span class="block font-semibold text-gray-500 text-xs">WITH</span><span class="font-bold">${decision.requiredWith}</span></div></div><div class="mt-4"><h4 class="font-semibold text-sm">Plan / Rationale:</h4><p class="text-sm bg-gray-50 p-3 mt-1 rounded whitespace-pre-wrap">${decision.triageNotes || '(No notes)'}</p></div>`;
+                        card.innerHTML = `<div class="flex justify-between items-start"><h3 class="font-bold text-lg">${decision.scenario.name}, <span class="math-inline">\{decision\.scenario\.age\}</h3\><span class\="text\-xs font\-bold uppercase px\-2 py\-1 rounded\-full bg\-gray\-200 text\-gray\-700"\></span>{decision.gpName}</span></div><div class="mt-4 pt-4 border-t grid grid-cols-3 gap-2 text-center text-sm"><div><span class="block font-semibold text-gray-500 text-xs">URGENCY</span><span class="font-bold text-<span class="math-inline">\{decision\.urgency\.toLowerCase\(\)\}\-600"\></span>{decision.urgency}</span></div><div><span class="block font-semibold text-gray-500 text-xs">TYPE</span><span class="font-bold"><span class="math-inline">\{decision\.consultationType\}</span\></div\><div\><span class\="block font\-semibold text\-gray\-500 text\-xs"\>WITH</span\><span class\="font\-bold"\></span>{decision.requiredWith}</span></div></div><div class="mt-4"><h4 class="font-semibold text-sm">Plan / Rationale:</h4><p class="text-sm bg-gray-50 p-3 mt-1 rounded whitespace-pre-wrap">${decision.triageNotes || '(No notes)'}</p></div>`;
                         decisionListContainer.appendChild(card);
                     });
                 }).catch(err => { console.error(err); decisionListContainer.innerHTML = `<p class="text-red-500">Error loading decisions.</p>`; });
         }
-
-async function archiveGroup(groupName) {
-    if (!confirm(`Are you sure you want to archive the group "${groupName}"? Trainees will no longer be able to access it.`)) {
-        return;
-    }
-    try {
-        const sessionRef = db.collection('sessions').doc(groupName);
-        await sessionRef.update({
-            isArchived: true
-        });
-        alert(`Group "${groupName}" has been successfully archived.`);
-        
-        if (sessionListener) {
-            sessionListener();
-            sessionListener = null;
-        }
-
-        // --- CHANGE THIS LINE ---
-        // Instead of going back to the old selection screen...
-        // renderGroupSelection(); 
-        
-        // ...we will re-render the management view we are already on.
-        renderGroupManagementView(); 
-
-    } catch (error) {
-        console.error("Error archiving group: ", error);
-        alert("An error occurred while archiving the group. Please try again.");
-    }
-}
-
-    async function reinstateMultipleGroups(groupIds) {
-    if (!groupIds || groupIds.length === 0) {
-        alert("No groups selected.");
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to reinstate ${groupIds.length} selected group(s)?`)) {
-        return;
-    }
-
-    const batch = db.batch();
-    groupIds.forEach(groupId => {
-        const sessionRef = db.collection('sessions').doc(groupId);
-        // Set the flag back to false to make the session active again
-        batch.update(sessionRef, { isArchived: false });
-    });
-
-    try {
-        await batch.commit();
-        alert(`${groupIds.length} group(s) have been successfully reinstated.`);
-        renderGroupManagementView(true); // Refresh the archived view
-    } catch (error) {
-        console.error("Error reinstating multiple groups: ", error);
-        alert("An error occurred while reinstating the groups.");
-    }
-}
         
         async function clearGroupData(groupName) {
             if (!confirm(`Are you sure you want to delete ALL decisions and reset for "${groupName}"?`)) return;
@@ -918,11 +912,12 @@ async function archiveGroup(groupName) {
                         scenarios.forEach(s => { newStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null }; });
                         await sessionRef.update({ scenarioStatus: newStatus });
                     } else {
+                        // This logic might need updating if you move to per-clinician slots
                         const newSlots = {};
                         const urgencies = ['Red', 'Amber', 'Green'];
                         const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
                         urgencies.forEach(urgency => types.forEach(type => {
-                            const key = `${urgency}|${type.replace(/[\s/]+/g, '-')}`; // Ensure key matches setup
+                            const key = `<span class="math-inline">\{urgency\}\|</span>{type.replace(/[\s/]+/g, '-')}`;
                             newSlots[key] = (urgency === 'Green') ? 10 : (urgency === 'Amber' ? 5 : 2);
                         }));
                         await sessionRef.update({ slots: newSlots });
