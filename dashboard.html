@@ -89,6 +89,8 @@
         /* Fix checkbox alignment in tables */
         th, td { vertical-align: middle; }
         .form-checkbox { vertical-align: middle; margin-top: 0 !important; }
+        th.checkbox-header { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+        th.checkbox-header, td .form-checkbox { display: flex; align-items: center; justify-content: center; }
     </style>
 </head>
 <body>
@@ -337,7 +339,7 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="p-4"><input type="checkbox" id="select-all-groups" class="form-checkbox h-4 w-4 rounded"></th>
+                                    <th scope="col" class="p-4 checkbox-header"><input type="checkbox" id="select-all-groups" class="form-checkbox h-4 w-4 rounded"></th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Group Name</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
