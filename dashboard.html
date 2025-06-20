@@ -33,7 +33,7 @@
             <h1 id="header-title" class="text-2xl font-bold text-gray-800">Triage Dashboard</h1>
             <button id="logout-btn" class="ml-4 text-sm text-gray-500 hover:underline">Logout</button>
         </div>
-         <div id="app-nav" class="hidden max-w-6xl mx-auto border-b border-gray-200">
+        <div id="app-nav" class="hidden max-w-6xl mx-auto border-b border-gray-200">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                 <a href="#" id="nav-sessions" class="nav-active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Sessions</a>
                 <a href="#" id="nav-scenarios" class="nav-inactive whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Scenario Editor</a>
@@ -67,29 +67,7 @@
         let sessionListener = null;
         let editingScenarioId = null; 
 
-        // A definitive list of all possible clinician roles for the setup checklist
-const ALL_CLINICIAN_ROLES = [
-    'GP',
-    'Practice Nurse',
-    'HCA',
-    'Phlebotomist',
-    'Admin Team',
-    'Advanced Practitioner',
-    'Care Coordinator',
-    'Clinical Pharmacist',
-    'Dietitian',
-    'First Contact Physiotherapist',
-    'General Practice Assistant',
-    'Health and Wellbeing Coach',
-    'Mental Health Practitioner',
-    'Nursing Associate and Student Nursing Associate',
-    'Occupational Therapist',
-    'Paramedic',
-    'Pharmacy Technician',
-    'Physician Associate',
-    'Podiatrist',
-    'Social Prescribing Link Worker'
-];
+        const ALL_CLINICIAN_ROLES = ['GP', 'ANP', 'Practice Nurse', 'HCA', 'FCP', 'Paramedic', 'Clinical Pharmacist', 'Physician Associate', 'Mental Health Practitioner', 'Social Prescribing Link Worker', 'Care Coordinator', 'Health and Wellbeing Coach', 'Dietitian', 'Podiatrist', 'Occupational Therapist', 'Nursing Associate', 'Phlebotomist', 'Admin Team', 'General Practice Assistant'];
         
         const appView = document.getElementById('app-view');
 
@@ -199,6 +177,7 @@ const ALL_CLINICIAN_ROLES = [
                 });
             });
         }
+
         function renderAccessDenied() {
             const accessDeniedView = document.getElementById('access-denied-view');
             accessDeniedView.innerHTML = `<div class="card p-8 text-center max-w-md mx-auto"><h2 class="text-xl font-bold text-red-600">Access Denied</h2><p class="mt-2">You do not have permission to view this page.</p><button id="denied-logout-btn" class="mt-4 text-sm underline">Logout</button></div>`;
@@ -516,129 +495,120 @@ const ALL_CLINICIAN_ROLES = [
             reader.readAsText(file);
         }
         
-function renderSessionSetup(groupName) {
-    // Dynamically create the HTML for our clinician checklist
-    const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
-        // A unique ID for each checkbox, e.g., 'role-check-Advanced-Practitioner'
-        const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
-        return `
-            <div class="relative flex items-start">
-                <div class="flex h-5 items-center">
-                    <input id="${roleId}" name="${roleId}" type="checkbox" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                </div>
-                <div class="ml-3 text-sm">
-                    <label for="${roleId}" class="font-medium text-gray-700">${role}</label>
-                </div>
-            </div>`;
-    }).join('');
-
-    // The main HTML for the entire setup view
-    appView.innerHTML = `
-        <div id="session-setup-view" class="card p-8">
-            <h2 class="text-2xl font-bold text-gray-800">Set Up New Session</h2>
-            <p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
-            
-            <div class="mt-4">
-                <label class="flex items-center">
-                    <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                    <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
-                </label>
-            </div>
-
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <fieldset>
-                    <legend class="text-base font-medium text-gray-900">Session Mode</legend>
-                    <div class="mt-4 space-y-4">
-                        <div class="flex items-center">
-                            <input id="mode-training" name="session-mode" type="radio" value="training" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                            <label for="mode-training" class="ml-3 block text-sm font-medium text-gray-700">Training Mode <span class="text-gray-500 font-normal">(Immediate Feedback)</span></label>
+        function renderSessionSetup(groupName) {
+            const clinicianCheckboxesHtml = ALL_CLINICIAN_ROLES.map(role => {
+                const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
+                return `
+                    <div class="relative flex items-start">
+                        <div class="flex h-5 items-center">
+                            <input id="${roleId}" name="clinician-role" type="checkbox" value="${role}" checked class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                         </div>
-                        <div class="flex items-center">
-                            <input id="mode-simulation" name="session-mode" type="radio" value="simulation" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
-                            <label for="mode-simulation" class="ml-3 block text-sm font-medium text-gray-700">Simulation Mode <span class="text-gray-500 font-normal">(No Trainee Feedback)</span></label>
+                        <div class="ml-3 text-sm">
+                            <label for="${roleId}" class="font-medium text-gray-700">${role}</label>
                         </div>
+                    </div>`;
+            }).join('');
+
+            appView.innerHTML = `
+                <div id="session-setup-view" class="card p-8">
+                    <h2 class="text-2xl font-bold text-gray-800">Set Up New Session</h2>
+                    <p class="text-gray-600 mt-2">This is a new session for group: <strong>${groupName}</strong>.</p>
+                    
+                    <div class="mt-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="hub-mode-checkbox" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <span class="ml-2 text-gray-700">Enable Triage Hub Mode</span>
+                        </label>
                     </div>
-                </fieldset>
-            </div>
 
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <fieldset>
-                    <legend class="text-base font-medium text-gray-900">Available Clinicians</legend>
-                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        ${clinicianCheckboxesHtml}
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <fieldset>
+                            <legend class="text-base font-medium text-gray-900">Session Mode</legend>
+                            <div class="mt-4 space-y-4">
+                                <div class="flex items-center">
+                                    <input id="mode-training" name="session-mode" type="radio" value="training" checked class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="mode-training" class="ml-3 block text-sm font-medium text-gray-700">Training Mode <span class="text-gray-500 font-normal">(Immediate Feedback)</span></label>
+                                </div>
+                                <div class="flex items-center">
+                                    <input id="mode-simulation" name="session-mode" type="radio" value="simulation" class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500">
+                                    <label for="mode-simulation" class="ml-3 block text-sm font-medium text-gray-700">Simulation Mode <span class="text-gray-500 font-normal">(No Trainee Feedback)</span></label>
+                                </div>
+                            </div>
+                        </fieldset>
                     </div>
-                </fieldset>
-            </div>
+
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <fieldset>
+                            <legend class="text-base font-medium text-gray-900">Available Clinicians</legend>
+                            <div class="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                ${clinicianCheckboxesHtml}
+                            </div>
+                        </fieldset>
+                    </div>
+                    
+                    <div class="mt-6 border-t border-gray-200 pt-6">
+                        <h3 class="text-base font-medium text-gray-900">Appointment Slots</h3>
+                        <div id="slot-inputs" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"></div>
+                    </div>
+                    
+                    <div class="mt-8 flex justify-end gap-4">
+                        <button id="back-to-group-selection-btn" class="btn bg-gray-200 hover:bg-gray-300">Back</button>
+                        <button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button>
+                    </div>
+                </div>`;
+
+            const slotInputsContainer = document.getElementById('slot-inputs');
+            const urgencies = ['Red', 'Amber', 'Green'];
+            const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
             
-            <div class="mt-6 border-t border-gray-200 pt-6">
-                <h3 class="text-base font-medium text-gray-900">Appointment Slots</h3>
-                <div id="slot-inputs" class="mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4"></div>
-            </div>
+            urgencies.forEach(urgency => types.forEach(type => {
+                const safeTypeId = type.replace(/[\s/]+/g, '-');
+                const id = `slot-${urgency}-${safeTypeId}`;
+                const defaultVal = 50;
+                slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
+            }));
+
+            document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupSelection);
             
-            <div class="mt-8 flex justify-end gap-4">
-                <button id="back-to-group-selection-btn" class="btn bg-gray-200 hover:bg-gray-300">Back</button>
-                <button id="start-session-btn" class="btn bg-green-600 text-white hover:bg-green-700">Start Session</button>
-            </div>
-        </div>`;
+            document.getElementById('start-session-btn').addEventListener('click', async () => {
+                const hubMode = document.getElementById('hub-mode-checkbox').checked;
+                const sessionMode = document.querySelector('input[name="session-mode"]:checked').value;
+                
+                const availableClinicians = Array.from(document.querySelectorAll('input[name="clinician-role"]:checked')).map(cb => cb.value);
 
-    const slotInputsContainer = document.getElementById('slot-inputs');
-    const urgencies = ['Red', 'Amber', 'Green'];
-    const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
-    
-    urgencies.forEach(urgency => types.forEach(type => {
-        const safeTypeId = type.replace(/[\s/]+/g, '-');
-        const id = `slot-${urgency}-${safeTypeId}`;
-        const defaultVal = 50;
-        slotInputsContainer.innerHTML += `<div><label for="${id}" class="block text-sm font-medium text-gray-700">${urgency} - ${type}</label><input type="number" id="${id}" value="${defaultVal}" min="0" class="mt-1 shadow-sm block w-full sm:text-sm border-gray-300 rounded-md p-2"></div>`;
-    }));
-
-    document.getElementById('back-to-group-selection-btn').addEventListener('click', renderGroupSelection);
-    
-    document.getElementById('start-session-btn').addEventListener('click', async () => {
-        // Read all the settings from the form
-        const hubMode = document.getElementById('hub-mode-checkbox').checked;
-        const sessionMode = document.querySelector('input[name="session-mode"]:checked').value;
-        
-        const availableClinicians = ALL_CLINICIAN_ROLES.filter(role => {
-            const roleId = `role-check-${role.replace(/\s+/g, '-')}`;
-            const checkbox = document.getElementById(roleId);
-            return checkbox && checkbox.checked;
-        });
-
-        if (availableClinicians.length === 0) {
-            alert("Please select at least one available clinician.");
-            return;
-        }
-
-        const slots = {};
-        urgencies.forEach(urgency => types.forEach(type => {
-            const safeTypeId = type.replace(/[\s/]+/g, '-');
-            const inputId = `slot-${urgency}-${safeTypeId}`;
-            const dbKey = `${urgency}|${safeTypeId}`;
-            slots[dbKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
-        }));
-        
-        const scenarioStatus = {};
-        if (hubMode) {
-            scenarios.forEach(s => {
-                if(s && s.id) {
-                    scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null };
+                if (availableClinicians.length === 0) {
+                    alert("Please select at least one available clinician.");
+                    return;
                 }
+
+                const slots = {};
+                urgencies.forEach(urgency => types.forEach(type => {
+                    const safeTypeId = type.replace(/[\s/]+/g, '-');
+                    const inputId = `slot-${urgency}-${safeTypeId}`;
+                    const dbKey = `${urgency}|${safeTypeId}`;
+                    slots[dbKey] = parseInt(document.getElementById(inputId).value, 10) || 0;
+                }));
+                
+                const scenarioStatus = {};
+                if (hubMode) {
+                    scenarios.forEach(s => {
+                        if(s && s.id) {
+                            scenarioStatus[s.id] = { status: 'unlocked', lockedBy: null, lockedAt: null };
+                        }
+                    });
+                }
+                
+                await db.collection('sessions').doc(groupName).set({ 
+                    groupName, 
+                    hubMode, 
+                    sessionMode, 
+                    availableClinicians,
+                    slots, 
+                    scenarioStatus 
+                });
+                showScenarioList(groupName);
             });
         }
-        
-        // Save the complete session object to Firestore
-        await db.collection('sessions').doc(groupName).set({ 
-            groupName, 
-            hubMode, 
-            sessionMode, 
-            availableClinicians, // Our new array of clinicians
-            slots, 
-            scenarioStatus 
-        });
-        showScenarioList(groupName);
-    });
-}
         
         function showScenarioList(groupName) {
             appView.innerHTML = `<div id="scenario-list-view"><div class="sm:flex sm:items-center sm:justify-between mb-4"><div><button id="back-to-group-btn" class="btn bg-gray-200 text-sm">← Change Group</button></div><div class="mt-4 sm:mt-0"><button id="clear-btn" class="btn bg-red-600 text-white hover:bg-red-700 text-sm">Clear All Group Data</button></div></div><div id="scenario-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div></div>`;
@@ -709,9 +679,9 @@ function renderSessionSetup(groupName) {
                     } else {
                         const newSlots = {};
                         const urgencies = ['Red', 'Amber', 'Green'];
-                        const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult - Message'];
+                        const types = ['Face-to-face', 'Telephone', 'Video', 'eConsult-Message'];
                         urgencies.forEach(urgency => types.forEach(type => {
-                            const key = `${urgency}|${type}`;
+                            const key = `${urgency}|${type.replace(/[\s/]+/g, '-')}`; // Ensure key matches setup
                             newSlots[key] = (urgency === 'Green') ? 10 : (urgency === 'Amber' ? 5 : 2);
                         }));
                         await sessionRef.update({ slots: newSlots });
