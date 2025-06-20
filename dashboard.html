@@ -285,8 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { userListContainer.innerHTML = '<p class="text-red-500">Could not load user list.</p>'; }
         }
 
-async function renderGroupManagementView() {
-    // Set the view's basic HTML structure, including a table
+async function renderGroupManagementView(filterArchived = false) {
+    // Determine which tab is active for styling
+    const activeTabClass = 'border-indigo-600 text-indigo-600';
+    const inactiveTabClass = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300';
+
+    // Set the view's HTML structure, now including the new tab navigation
     appView.innerHTML = `
         <div class="card p-6">
             <div class="flex justify-between items-center">
@@ -300,8 +304,20 @@ async function renderGroupManagementView() {
                     </button>
                 </div>
             </div>
-            <div class="mt-6 border-t border-gray-200">
-                <table class="min-w-full divide-y divide-gray-200 mt-4">
+
+            <div class="mt-4 border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                    <button id="active-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${!filterArchived ? activeTabClass : inactiveTabClass}">
+                        Active Sessions
+                    </button>
+                    <button id="archived-tab" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${filterArchived ? activeTabClass : inactiveTabClass}">
+                        Archived Sessions
+                    </button>
+                </nav>
+            </div>
+            
+            <div class="mt-2">
+                <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th scope="col" class="p-4">
@@ -317,17 +333,21 @@ async function renderGroupManagementView() {
                     </tbody>
                 </table>
             </div>
-             <div class="mt-8 border-t pt-6">
+            <div class="mt-8 border-t pt-6">
                  <h3 class="text-lg font-medium">Create New Session</h3>
                  <div id="group-creation-container" class="mt-4"></div>
             </div>
         </div>
     `;
 
-    // Render the original group creation input inside our new view
-    const creationContainer = document.getElementById('group-creation-container');
-    creationContainer.innerHTML = `<div class="max-w-sm"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md" placeholder="e.g., Timperley-ST1-August"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Create or Load Group</button></div>`;
+    // Add event listeners for the new tabs
+    document.getElementById('active-tab').addEventListener('click', () => renderGroupManagementView(false));
+    document.getElementById('archived-tab').addEventListener('click', () => renderGroupManagementView(true));
     
+    // The group creation container remains the same
+    const creationContainer = document.getElementById('group-creation-container');
+    // ... (rest of the creation container logic is unchanged) ...
+    creationContainer.innerHTML = `<div class="max-w-sm"><input type="text" id="group-name-input" class="p-3 w-full border rounded-md" placeholder="e.g., Timperley-ST1-August"><button id="view-dashboard-btn" class="mt-4 w-full btn btn-primary">Create or Load Group</button></div>`;
     document.getElementById('view-dashboard-btn').addEventListener('click', async () => {
         const groupName = document.getElementById('group-name-input').value.trim();
         if (!groupName) return;
@@ -340,24 +360,32 @@ async function renderGroupManagementView() {
         }
     });
 
-
     const tableBody = document.getElementById('group-list-body');
+    const archiveButton = document.getElementById('archive-selected-btn');
+    const selectAllCheckbox = document.getElementById('select-all-groups');
+
+    // Hide bulk-archive controls on the "Archived" tab
+    if (filterArchived) {
+        archiveButton.style.display = 'none';
+        selectAllCheckbox.style.display = 'none';
+    }
+
     try {
-        // Fetch all documents from the 'sessions' collection
-        const querySnapshot = await db.collection('sessions').get();
+        // **MODIFIED QUERY**
+        // We now filter based on the 'isArchived' flag.
+        // Firestore requires that a field exists to filter on it, so we check for '!=' to find active sessions.
+        const query = db.collection('sessions').where('isArchived', '==', filterArchived);
+        const querySnapshot = await query.get();
         
         if (querySnapshot.empty) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No sessions found.</td></tr>';
+            tableBody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-500">No ${filterArchived ? 'archived' : 'active'} sessions found.</td></tr>`;
             return;
         }
 
-        // Clear the 'Loading...' message
-        tableBody.innerHTML = '';
-
-        // Loop through each document and create a table row
+        tableBody.innerHTML = ''; // Clear 'Loading...'
         querySnapshot.forEach(doc => {
             const sessionData = doc.data();
-            const groupName = doc.id; // The group name is the document's ID
+            const groupName = doc.id;
             const isArchived = sessionData.isArchived === true;
 
             const row = document.createElement('tr');
