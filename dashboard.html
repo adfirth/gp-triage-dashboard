@@ -109,12 +109,15 @@
         <div id="app-view" class="hidden w-full"></div>
     </main>
 
+    <script src="firebase-config.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
     
     <script>
+        window.firebaseConfig = firebaseConfig;
+
         // STEP 1: INITIALIZE FIREBASE
         if (window.firebaseConfig) {
           firebase.initializeApp(window.firebaseConfig);
