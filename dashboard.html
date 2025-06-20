@@ -88,7 +88,8 @@
         }
         /* Fix checkbox alignment in tables */
         th, td { vertical-align: middle; }
-        .form-checkbox { vertical-align: middle; margin-top: 0 !important; }
+        th.checkbox-header, td.checkbox-cell { display: flex; align-items: center; justify-content: center; height: 100%; }
+        .form-checkbox { vertical-align: middle; margin-top: 0 !important; margin-bottom: 0 !important; }
         th.checkbox-header { padding-top: 0.75rem; padding-bottom: 0.75rem; }
         th.checkbox-header, td .form-checkbox { display: flex; align-items: center; justify-content: center; }
     </style>
@@ -392,7 +393,7 @@
                     const isArchived = doc.data().isArchived === true;
 
                     row.innerHTML = `
-                        <td class="p-4 align-middle">
+                        <td class="p-4 align-middle checkbox-cell">
                             <div class="flex items-center">
                                 <input type="checkbox" class="form-checkbox group-checkbox h-4 w-4 rounded" data-group-name="${doc.id}">
                             </div>
