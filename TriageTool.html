@@ -7,26 +7,79 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        :root {
+            --color-primary: #00b894; /* accurx green */
+            --color-primary-hover: #00a383;
+            --color-text-dark: #182C49;
+            --color-text-body: #2d3940;
+            --color-border-light: #eaf0f6;
+            --color-bg-light: #f8f9fa;
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--color-bg-light); 
+            color: var(--color-text-body);
+        }
         .hidden { display: none; }
-        .card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1); }
-        .btn-primary { background-color: #4f46e5; color: white; }
-        .btn-primary:hover { background-color: #4338ca; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .save-btn-feedback { background-color: #16a34a !important; color: white !important; }
+        .card { 
+            background-color: white; 
+            border-radius: 0.75rem; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07);
+            border: 1px solid var(--color-border-light);
+        }
+        .btn { 
+            padding: 0.6rem 1.25rem; 
+            border-radius: 0.5rem;
+            font-weight: 600; 
+            transition: all 0.2s ease-in-out;
+            border: 1px solid transparent;
+        }
+        .btn-primary { 
+            background-color: var(--color-primary); 
+            color: white; 
+            border-color: var(--color-primary);
+        }
+        .btn-primary:hover { 
+            background-color: var(--color-primary-hover); 
+            border-color: var(--color-primary-hover);
+        }
+        .btn-secondary {
+            background-color: #f0f2f5;
+            color: var(--color-text-dark);
+            border: 1px solid #d1d5db;
+        }
+        .btn-secondary:hover {
+            background-color: #e4e6e9;
+        }
+        .btn:disabled { 
+            opacity: 0.5; 
+            cursor: not-allowed; 
+        }
+        .save-btn-feedback { 
+            background-color: #16a34a !important; /* Keep explicit green for success feedback */
+            color: white !important; 
+        }
         .text-red-600 { color: #dc2626; }
         .text-amber-600 { color: #d97706; }
         .text-green-600 { color: #16a34a; }
-        .slot-high { color: #15803d; font-weight: 500; }
-        .slot-medium { color: #d97706; font-weight: 500; }
-        .slot-low { color: #dc2626; font-weight: 600; }
+        
+        /* Form input styling */
+        .form-input, .form-textarea, .form-select {
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus {
+            --tw-ring-color: var(--color-primary);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 1px var(--color-primary);
+            outline: 2px solid transparent;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 p-4 flex items-start justify-center min-h-screen">
+<body class="p-4 flex items-start justify-center min-h-screen">
     <div class="w-full max-w-5xl mx-auto">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-800 tracking-tight">GP Triage Simulator</h1>
+            <h1 class="text-4xl font-bold tracking-tight" style="color: var(--color-text-dark);">GP Triage Simulator</h1>
             <p class="text-lg text-gray-500 mt-2" id="session-info">Login to begin a session</p>
         </header>
 
@@ -44,14 +97,14 @@
                     <footer class="flex flex-col sm:flex-row items-center justify-between px-2">
                         <div id="scenario-counter" class="text-sm text-gray-500 mb-4 sm:mb-0"></div>
                         <div id="standard-nav" class="flex items-center space-x-3">
-                            <button id="prev-btn" class="px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-100 disabled:opacity-50">Previous</button>
+                            <button id="prev-btn" class="btn btn-secondary">Previous</button>
                             <button id="save-btn" class="btn btn-primary">Save Decision</button>
-                            <button id="next-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50">Next</button>
+                            <button id="next-btn" class="btn btn-secondary">Next</button>
                         </div>
                     </footer>
                 </div>
                 <aside id="slot-counter-view" class="card p-6">
-                    <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-3 mb-4">Slots Remaining</h3>
+                    <h3 class="text-lg font-bold border-b pb-3 mb-4" style="color: var(--color-text-dark);">Slots Remaining</h3>
                     <div id="slot-display" class="space-y-3 text-sm"><p class="text-gray-500">Joining session...</p></div>
                 </aside>
             </div>
@@ -183,25 +236,25 @@
             const container = document.getElementById('auth-view');
             container.innerHTML = `
                 <div id="login-form">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-6">Login</h2>
+                    <h2 class="text-2xl font-bold text-center mb-6" style="color: var(--color-text-dark);">Login</h2>
                     <div class="space-y-4">
-                        <div><label for="login-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="login-email" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="login-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="login-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <div><label for="login-email" class="block text-sm font-medium">Email Address</label><input type="email" id="login-email" class="form-input mt-1 block w-full p-3"></div>
+                        <div><label for="login-password" class="block text-sm font-medium">Password</label><input type="password" id="login-password" class="form-input mt-1 block w-full p-3"></div>
                         <p id="auth-error" class="text-red-500 text-sm hidden"></p>
                         <button id="login-btn" class="w-full btn btn-primary">Login</button>
                     </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium text-indigo-600 hover:text-indigo-500">Create one</a></p>
+                    <p class="text-center text-sm text-gray-500 mt-6">Don't have an account? <a href="#" id="show-signup" class="font-medium" style="color: var(--color-primary);">Create one</a></p>
                 </div>
                 <div id="signup-form" class="hidden">
-                    <h2 class="text-2xl font-bold text-gray-800 text-center mb-2">Create Account</h2>
+                    <h2 class="text-2xl font-bold text-center mb-2" style="color: var(--color-text-dark);">Create Account</h2>
                     <p class="text-center text-sm text-gray-500 mb-6">Your account will require approval by a facilitator.</p>
                     <div class="space-y-4">
-                        <div><label for="signup-name" class="block text-sm font-medium text-gray-700">Display Name</label><input type="text" id="signup-name" autocomplete="off" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3" placeholder="e.g. Dr Smith"></div>
-                        <div><label for="signup-email" class="block text-sm font-medium text-gray-700">Email Address</label><input type="email" id="signup-email" autocomplete="off" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
-                        <div><label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label><input type="password" id="signup-password" autocomplete="new-password" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3"></div>
+                        <div><label for="signup-name" class="block text-sm font-medium">Display Name</label><input type="text" id="signup-name" autocomplete="off" class="form-input mt-1 block w-full p-3" placeholder="e.g. Dr Smith"></div>
+                        <div><label for="signup-email" class="block text-sm font-medium">Email Address</label><input type="email" id="signup-email" autocomplete="off" class="form-input mt-1 block w-full p-3"></div>
+                        <div><label for="signup-password" class="block text-sm font-medium">Password</label><input type="password" id="signup-password" autocomplete="new-password" class="form-input mt-1 block w-full p-3"></div>
                         <button id="signup-btn" class="w-full btn btn-primary">Create Account</button>
                     </div>
-                    <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium text-indigo-600 hover:text-indigo-500">Log in</a></p>
+                    <p class="text-center text-sm text-gray-500 mt-6">Already have an account? <a href="#" id="show-login" class="font-medium" style="color: var(--color-primary);">Log in</a></p>
                 </div>`;
 
             const loginForm = document.getElementById('login-form');
@@ -246,22 +299,22 @@
 
         function renderFacilitatorView() {
             const container = document.getElementById('facilitator-hub-view');
-            container.innerHTML = `<h2 class="text-2xl font-bold">Facilitator Access</h2><p class="mt-2">This is the trainee tool. Please use the Dashboard to manage sessions.</p><button id="logout-btn-facilitator" class="mt-4 text-sm underline">Logout</button>`;
+            container.innerHTML = `<h2 class="text-2xl font-bold" style="color:var(--color-text-dark);">Facilitator Access</h2><p class="mt-2">This is the trainee tool. Please use the Dashboard to manage sessions.</p><button id="logout-btn-facilitator" class="mt-4 text-sm underline">Logout</button>`;
             document.getElementById('logout-btn-facilitator').addEventListener('click', () => auth.signOut());
         }
         
         function renderWelcomeScreen() {
             const container = document.getElementById('welcome-screen');
             container.innerHTML = `
-                <h2 class="text-2xl font-bold text-gray-800">Join a Triage Session</h2>
+                <h2 class="text-2xl font-bold" style="color: var(--color-text-dark);">Join a Triage Session</h2>
                 <div class="mt-8 max-w-sm mx-auto space-y-4">
                     <div>
-                        <label for="user-name-input" class="block text-sm font-medium text-gray-700 text-left">Your Name for this Session</label>
-                        <input type="text" id="user-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" value="${gpName}">
+                        <label for="user-name-input" class="block text-sm font-medium text-left">Your Name for this Session</label>
+                        <input type="text" id="user-name-input" class="form-input mt-1 block w-full p-3 text-center" value="${gpName}">
                     </div>
                     <div>
-                        <label for="group-name-input" class="block text-sm font-medium text-gray-700 text-left">Group Name</label>
-                        <input type="text" id="group-name-input" class="mt-1 shadow-sm block w-full sm:text-lg border-gray-300 rounded-md p-3 text-center" placeholder="e.g., Timperley-ST1-July">
+                        <label for="group-name-input" class="block text-sm font-medium text-left">Group Name</label>
+                        <input type="text" id="group-name-input" class="form-input mt-1 block w-full p-3 text-center" placeholder="e.g., Timperley-ST1-July">
                     </div>
                     <button id="start-btn" class="w-full btn btn-primary">Join Session</button>
                     <button id="logout-btn-welcome" class="mt-2 text-sm text-gray-500 hover:underline">Logout</button>
@@ -281,66 +334,65 @@
             });
         }
 
-       async function joinSession(group) {
-    try {
-        await loadScenariosFromDB();
-        const sessionDoc = await db.collection('sessions').doc(group).get();
-        if (!sessionDoc.exists) {
-            alert('This group session has not been set up. Please check the Group Name.');
-            return;
+        async function joinSession(group) {
+            try {
+                await loadScenariosFromDB();
+                const sessionDoc = await db.collection('sessions').doc(group).get();
+                if (!sessionDoc.exists) {
+                    alert('This group session has not been set up. Please check the Group Name.');
+                    return;
+                }
+
+                groupName = group;
+                currentSessionInfo = sessionDoc.data();
+
+                if (currentSessionInfo.isArchived) {
+                    alert('This group session has been archived and is no longer accessible.');
+                    renderWelcomeScreen();
+                    return;
+                }
+                
+                userDecisions.clear();
+                const decisionsSnapshot = await db.collection("decisions")
+                    .where("groupName", "==", groupName)
+                    .where("gpName", "==", gpName)
+                    .get();
+
+                decisionsSnapshot.forEach(doc => {
+                    const decision = doc.data();
+                    userDecisions.set(decision.scenarioId, decision);
+                });
+
+                document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
+
+                listenToSlots();
+
+                if (currentSessionInfo.sessionMode === 'training') {
+                    document.getElementById('slot-counter-view').style.display = 'none';
+                    const mainContent = document.getElementById('main-content-area');
+                    mainContent.classList.remove('lg:col-span-2');
+                    mainContent.classList.add('lg:col-span-3');
+                } else {
+                    document.getElementById('slot-counter-view').style.display = 'block';
+                    const mainContent = document.getElementById('main-content-area');
+                    mainContent.classList.remove('lg:col-span-3');
+                    mainContent.classList.add('lg:col-span-2');
+                }
+
+                if (currentSessionInfo.hubMode) {
+                    showView('hub-view');
+                    document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold" style="color:var(--color-text-dark);">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
+                    document.getElementById('get-case-btn').addEventListener('click', getNextCase);
+                } else {
+                    showView('triage-view');
+                    document.getElementById('standard-nav').classList.remove('hidden');
+                    renderScenario(0);
+                }
+            } catch (error) {
+                console.error("Error joining session:", error);
+                alert("An error occurred while joining the session.");
+            }
         }
-
-        groupName = group;
-        currentSessionInfo = sessionDoc.data();
-
-        // ** ADD THIS CHECK **
-        // If the session is archived, block access.
-        if (currentSessionInfo.isArchived) {
-            alert('This group session has been archived and is no longer accessible.');
-            return;
-        }
-        
-        userDecisions.clear();
-        const decisionsSnapshot = await db.collection("decisions")
-            .where("groupName", "==", groupName)
-            .where("gpName", "==", gpName)
-            .get();
-
-        decisionsSnapshot.forEach(doc => {
-            const decision = doc.data();
-            userDecisions.set(decision.scenarioId, decision);
-        });
-
-        document.getElementById('session-info').textContent = `User: ${gpName} | Group: ${groupName}`;
-
-        listenToSlots();
-
-        if (currentSessionInfo.sessionMode === 'training') {
-            document.getElementById('slot-counter-view').style.display = 'none';
-            const mainContent = document.getElementById('main-content-area');
-            mainContent.classList.remove('lg:col-span-2');
-            mainContent.classList.add('lg:col-span-3');
-        } else {
-            document.getElementById('slot-counter-view').style.display = 'block';
-            const mainContent = document.getElementById('main-content-area');
-            mainContent.classList.remove('lg:col-span-3');
-            mainContent.classList.add('lg:col-span-2');
-        }
-
-        if (currentSessionInfo.hubMode) {
-            showView('hub-view');
-            document.getElementById('hub-view').innerHTML = `<h2 class="text-2xl font-bold text-gray-800">Triage Hub</h2><p class="text-gray-600 mt-2">Click to get the next available case.</p><button id="get-case-btn" class="mt-6 btn btn-primary">Get Next Available Case</button><p id="hub-status" class="mt-4 text-sm text-gray-500"></p>`;
-            document.getElementById('get-case-btn').addEventListener('click', getNextCase);
-        } else {
-            showView('triage-view');
-            document.getElementById('standard-nav').classList.remove('hidden');
-            renderScenario(0);
-        }
-    } catch (error) {
-        console.error("Error joining session:", error);
-        alert("An error occurred while joining the session.");
-    }
-}
         
         async function getNextCase() {
             const hubStatus = document.getElementById('hub-status');
@@ -406,7 +458,6 @@
             const saveButton = document.getElementById('save-btn');
             const currentScenario = scenarios[currentScenarioIndex];
             
-            // BUG FIX: Add a guard clause to prevent running on a locked case
             if (!currentScenario || userDecisions.has(currentScenario.id)) {
                 return; 
             }
@@ -452,14 +503,14 @@
                     const isRevising = !!existingDecisionDoc;
                     const isSwapping = isRevising && oldSlotKey !== newSlotKey;
                     const hasSlotsForNew = currentSlots[newSlotKey] !== undefined && currentSlots[newSlotKey] > 0;
-                    if (!currentSessionInfo.hubMode && !hasSlotsForNew && (!isRevising || isSwapping)) {
+                    if (!currentSessionInfo.hubMode && currentSessionInfo.sessionMode !== 'training' && !hasSlotsForNew && (!isRevising || isSwapping)) {
                         return false;
                     }
                     
                     if (isSwapping) {
                         updates[`slots.${oldSlotKey}`] = firebase.firestore.FieldValue.increment(1);
                     }
-                    if (!isRevising || isSwapping) {
+                    if ((!isRevising || isSwapping) && currentSessionInfo.sessionMode !== 'training') {
                         updates[`slots.${newSlotKey}`] = firebase.firestore.FieldValue.increment(-1);
                     }
                     if (currentSessionInfo.hubMode) {
@@ -514,8 +565,8 @@
             const saveButton = document.getElementById('save-btn');
             const scenarioDetailsHtml = `
                 <div class="space-y-6">
-                    <div class="p-4 bg-indigo-50 rounded-lg">
-                        <h3 class="font-bold text-lg text-indigo-800">Patient Details</h3>
+                    <div class="p-4 rounded-lg" style="background-color:#F0F9FF;">
+                        <h3 class="font-bold text-lg" style="color:var(--color-text-dark);">Patient Details</h3>
                         <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4">
                             <p><b>Name:</b> ${scenario.name || 'Not provided'}</p>
                             <p><b>Age:</b> ${scenario.age || 'Not provided'}</p>
@@ -523,12 +574,12 @@
                     </div>
                     <div class="space-y-4">
                         <div>
-                            <h4 class="font-semibold text-gray-800">Describe the problem:</h4>
-                            <p class="mt-1 p-3 bg-gray-100 rounded-md">${scenario.problem || 'Not provided'}</p>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Describe the problem:</h4>
+                            <p class="mt-1 p-3 bg-gray-50 rounded-md">${scenario.problem || 'Not provided'}</p>
                         </div>
                         ${scenario.attachments ? `
                         <div>
-                            <h4 class="font-semibold text-gray-800">Attachment:</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Attachment:</h4>
                             <div class="mt-2">
                                 <a href="${scenario.attachments}" target="_blank">
                                     <img src="${scenario.attachments}" class="rounded-lg border max-w-full h-auto sm:max-w-md hover:opacity-90 transition-opacity" alt="Scenario Attachment">
@@ -536,31 +587,31 @@
                             </div>
                         </div>` : ''}
                         <div>
-                            <h4 class="font-semibold text-gray-800">How long has it been going on for? Is it getting better or worse?</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">How long has it been going on for? Is it getting better or worse?</h4>
                             <p class="mt-1">${scenario.durationAndProgression || 'Not provided'}</p>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-gray-800">Have you tried anything to help?</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Have you tried anything to help?</h4>
                             <p class="mt-1">${scenario.selfHelp || 'Not provided'}</p>
                         </div>
                     </div>
                     <div class="border-t pt-4 space-y-4">
                         <div>
-                            <h4 class="font-semibold text-gray-800">Is there anything you're particularly worried about?</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Is there anything you're particularly worried about?</h4>
                             <p class="mt-1">${scenario.worried || 'Not provided'}</p>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-gray-800">Expectations:</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Expectations:</h4>
                             <p class="mt-1">${scenario.expectations || 'Not provided'}</p>
                         </div>
                     </div>
                     <div class="border-t pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <h4 class="font-semibold text-gray-800">Contact method preference:</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Contact method preference:</h4>
                             <p class="mt-1">${scenario.contactMethod || 'Not provided'}</p>
                         </div>
                         <div>
-                            <h4 class="font-semibold text-gray-800">Preferred clinician:</h4>
+                            <h4 class="font-semibold" style="color:var(--color-text-dark);">Preferred clinician:</h4>
                             <p class="mt-1">${scenario.preferredClinician || 'Not provided'}</p>
                         </div>
                     </div>
@@ -576,11 +627,11 @@
                             <p class="text-sm text-yellow-700">You have already saved a decision for this case.</p>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div><label class="block text-sm font-medium text-gray-700">Urgency</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.urgency}" readonly></div>
-                            <div><label class="block text-sm font-medium text-gray-700">Consultation type</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.consultationType.replace(/-/g, ' ')}" readonly></div>
-                            <div><label class="block text-sm font-medium text-gray-700">Required with</label><input type="text" class="mt-1 bg-gray-100 p-2 w-full border rounded-md" value="${lockedDecision.requiredWith}" readonly></div>
+                            <div><label class="block text-sm font-medium">Urgency</label><input type="text" class="form-input mt-1 bg-gray-100 p-2 w-full" value="${lockedDecision.urgency}" readonly></div>
+                            <div><label class="block text-sm font-medium">Consultation type</label><input type="text" class="form-input mt-1 bg-gray-100 p-2 w-full" value="${lockedDecision.consultationType.replace(/-/g, ' ')}" readonly></div>
+                            <div><label class="block text-sm font-medium">Required with</label><input type="text" class="form-input mt-1 bg-gray-100 p-2 w-full" value="${lockedDecision.requiredWith}" readonly></div>
                         </div>
-                        <div><label class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2 bg-gray-100" readonly>${lockedDecision.triageNotes}</textarea></div></div>
+                        <div><label class="block text-sm font-medium">Triage notes / Management plan</label><div class="mt-1"><textarea rows="4" class="form-textarea mt-1 w-full p-2 bg-gray-100" readonly>${lockedDecision.triageNotes}</textarea></div></div>
                     </div>`;
                 
                 document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + lockedTriageOptionsHtml;
@@ -591,14 +642,13 @@
                 saveButton.textContent = 'Save Decision';
                 saveButton.classList.remove('save-btn-feedback');
                 
-                const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold text-gray-900">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium text-gray-700">Urgency</label><select id="urgency" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md font-semibold focus:ring-indigo-500 focus:border-indigo-500"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium text-gray-700">Consultation type</label><select id="consultation-type" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div>
+                const triageOptionsHtml = `<div class="mt-6 pt-6 border-t border-gray-200 space-y-4"><h2 class="text-xl font-bold" style="color:var(--color-text-dark);">Triage Decision</h2><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label for="urgency" class="block text-sm font-medium">Urgency</label><select id="urgency" class="form-select mt-1 block w-full pl-3 pr-10 py-2 text-base rounded-md font-semibold"><option class="text-red-600" value="Red">Red (same day)</option><option class="text-amber-600" value="Amber">Amber (within 48 hours)</option><option class="text-green-600" value="Green" selected>Green (within 2 weeks)</option></select></div><div><label for="consultation-type" class="block text-sm font-medium">Consultation type</label><select id="consultation-type" class="form-select mt-1 block w-full pl-3 pr-10 py-2 text-base rounded-md"><option value="Face-to-face">Face-to-face</option><option value="Telephone">Telephone</option><option value="Video">Video</option><option value="eConsult-Message">eConsult / Message</option></select></div>
                 <div>
-                    <label for="required-with" class="block text-sm font-medium text-gray-700">Required with</label>
-                    <select id="required-with" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
-${/* BUG FIX: Add fallback for missing availableClinicians array */ ''}
-      ${(currentSessionInfo.availableClinicians || []).map(role => `<option value="${role}">${role}</option>`).join('')}
+                    <label for="required-with" class="block text-sm font-medium">Required with</label>
+                    <select id="required-with" class="form-select mt-1 block w-full pl-3 pr-10 py-2 text-base rounded-md">
+                        ${(currentSessionInfo.availableClinicians || []).map(role => `<option value="${role}">${role}</option>`).join('')}
                     </select>
-                </div></div><div><label for="triage-notes" class="block text-sm font-medium text-gray-700">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="shadow-sm mt-1 block w-full sm:text-sm border-gray-300 rounded-md p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
+                </div></div><div><label for="triage-notes" class="block text-sm font-medium">Triage notes / Management plan</label><div class="mt-1"><textarea id="triage-notes" name="triage-notes" rows="4" class="form-textarea mt-1 block w-full p-2" placeholder="Enter your rationale and plan here..."></textarea></div></div></div>`;
                 
                 document.getElementById('scenario-container').innerHTML = scenarioDetailsHtml + triageOptionsHtml;
                 const savedState = unsavedDecisions[scenario.id];
@@ -614,7 +664,7 @@ ${/* BUG FIX: Add fallback for missing availableClinicians array */ ''}
         
         function renderFeedbackView(userDecision, modelAnswer) {
             const container = document.getElementById('feedback-view');
-            let feedbackHtml = `<h2 class="text-2xl font-bold text-gray-800">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
+            let feedbackHtml = `<h2 class="text-2xl font-bold" style="color:var(--color-text-dark);">Feedback for Case ${userDecision.scenario.id}</h2><div class="mt-6 space-y-4">`;
             const comparisons = [
                 { title: 'Urgency', user: userDecision.urgency, model: modelAnswer.urgency },
                 { title: 'Consultation Type', user: userDecision.consultationType, model: modelAnswer.consultationType },
@@ -674,16 +724,15 @@ ${/* BUG FIX: Add fallback for missing availableClinicians array */ ''}
                 showView('hub-view');
                 const hubStatus = document.getElementById('hub-status');
                 if(hubStatus) hubStatus.textContent = 'Click to get the next available case.';
-
             } else if (currentScenarioIndex < scenarios.length - 1) {
                 showView('triage-view');
                 renderScenario(++currentScenarioIndex);
             } else {
                 showView('welcome-screen');
                 document.getElementById('welcome-screen').innerHTML = `
-                    <h2 class="text-2xl font-bold text-gray-800">Session Complete!</h2>
+                    <h2 class="text-2xl font-bold" style="color: var(--color-text-dark);">Session Complete!</h2>
                     <p class="mt-2">You have completed all scenarios in this session.</p>
-                    <button id="logout-btn-complete" class="mt-6 btn bg-gray-200 hover:bg-gray-300">Logout</button>
+                    <button id="logout-btn-complete" class="mt-6 btn btn-secondary">Logout</button>
                 `;
                 const logoutBtn = document.getElementById('logout-btn-complete');
                 if (logoutBtn) {
